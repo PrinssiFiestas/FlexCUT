@@ -1,4 +1,4 @@
 build
 
 # vim swap files
-.swp
+*.swp
