@@ -34,11 +34,19 @@
 struct teacut_LinkedList
 {
 	void (*test)();
+	//char suite[MAX_SUITE_NAME_LENGTH];
 	void* nextObject;
 };
 
 void teacut_traverseList(struct teacut_LinkedList* object)
 {
+	static int calls = 0;
+	if(calls++ >= 10)
+		return;
+
+	printf("nexti osote: %p", object->nextObject);
+
+//	printf("\nblaa blaa suite: %s\n", object->suite);
 	object->test();
 
 	if(object->nextObject == NULL)
@@ -56,7 +64,7 @@ int FUNCTION												\
 {															\
 	printf("\n\nStarting tests\n\n\n");						\
 	struct teacut_LinkedList* teacut_lastObject;			\
-	char teacut_currentSuite[MAX_SUITE_NAME_LENGTH]; 		\
+	char teacut_currentSuite[MAX_SUITE_NAME_LENGTH];		\
 	void teacut_doNothing() {}								\
 	struct teacut_LinkedList teacut_firstObject;			\
 	teacut_firstObject.test = teacut_doNothing; 			\
@@ -82,6 +90,7 @@ int FUNCTION												\
 	}															\
 	struct teacut_LinkedList teacut_##NAME; 					\
 	teacut_##NAME.test 	    	 	= NAME; 					\
+/*	strcpy(teacut_##NAME.suite,       teacut_currentSuite);		*/\
 	teacut_##NAME.nextObject 		= NULL;						\
 	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 	\
 	teacut_lastObject 				= &teacut_##NAME;
