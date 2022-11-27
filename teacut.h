@@ -29,7 +29,7 @@
 
 //-------------------------------------------------------
 
-#define MAX_SUITE_NAME_LENGTH 50
+#define MAX_SUITE_NAME_LENGTH 100
 
 struct teacut_LinkedList
 {
@@ -52,7 +52,7 @@ void teacut_traverseList(struct teacut_LinkedList* object)
 	strcpy(nextSuite, ((struct teacut_LinkedList*)(object->nextObject))->suite);
 
 	bool changedSuite =  strcmp(object->suite, nextSuite);
-	bool firstSuite   = !strcmp(object->suite, "teacut_first");
+	bool firstSuite   = !strcmp(object->suite, "teacut_globalSuite");
 
 	if( (!firstSuite) && changedSuite)
 	{
@@ -67,25 +67,25 @@ void teacut_traverseList(struct teacut_LinkedList* object)
 
 #define TEST_SUITE(NAME) strncpy(teacut_currentSuite, #NAME, MAX_SUITE_NAME_LENGTH);
 
-#define TEST_FUNCTION(FUNCTION, CODE)					\
-int FUNCTION											\
-{														\
-	printf("\n\nStarting tests\n\n\n");					\
-	struct teacut_LinkedList* teacut_lastObject;		\
-	char teacut_currentSuite[MAX_SUITE_NAME_LENGTH]; 	\
-	void teacut_doNothing() {}							\
-	struct teacut_LinkedList teacut_firstObject;		\
-	teacut_firstObject.test = teacut_doNothing; 		\
-	strcpy(teacut_firstObject.suite, "teacut_first");	\
-	teacut_lastObject = &teacut_firstObject; 			\
-														\
-	TEST_SUITE(teacut_first)							\
-														\
-	CODE												\
-														\
-	teacut_traverseList(&teacut_firstObject);			\
-	TEACUT_PRINT_GREEN("\nAll tests [PASSED]\n\n");		\
-	return 0;											\
+#define TEST_FUNCTION(FUNCTION, CODE)						\
+int FUNCTION												\
+{															\
+	printf("\n\nStarting tests\n\n\n");						\
+	struct teacut_LinkedList* teacut_lastObject;			\
+	char teacut_currentSuite[MAX_SUITE_NAME_LENGTH]; 		\
+	void teacut_doNothing() {}								\
+	struct teacut_LinkedList teacut_firstObject;			\
+	teacut_firstObject.test = teacut_doNothing; 			\
+	strcpy(teacut_firstObject.suite, "teacut_globalSuite");	\
+	teacut_lastObject = &teacut_firstObject; 				\
+															\
+	TEST_SUITE(teacut_globalSuite)							\
+															\
+	CODE													\
+															\
+	teacut_traverseList(&teacut_firstObject);				\
+	TEACUT_PRINT_GREEN("\nAll tests [PASSED]\n\n");			\
+	return 0;												\
 }
 
 #define TEST(NAME, CODE)										\
@@ -98,11 +98,11 @@ int FUNCTION											\
 		TEACUT_PRINT_GREEN("[PASSED]\n");						\
 	}															\
 	struct teacut_LinkedList teacut_##NAME; 					\
-	teacut_##NAME.test 	    	 = NAME; 						\
-	strcpy(teacut_##NAME.suite, 	   teacut_currentSuite); 	\
-	teacut_##NAME.nextObject 		 = NULL;					\
-	teacut_lastObject->nextObject = (void*)&teacut_##NAME; 		\
-	teacut_lastObject 			 = &teacut_##NAME;
+	teacut_##NAME.test 	    	 	= NAME; 					\
+	strcpy(teacut_##NAME.suite, 	  teacut_currentSuite); 	\
+	teacut_##NAME.nextObject 		= NULL;						\
+	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 	\
+	teacut_lastObject 				= &teacut_##NAME;
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
