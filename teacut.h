@@ -29,24 +29,24 @@
 
 //-------------------------------------------------------
 
-#define MAX_SUITE_NAME_LENGTH 100
+#define TEACUT_MAX_NAME_LENGTH 100
 
 struct teacut_LinkedList
 {
 	void (*test)();
-	//char suite[MAX_SUITE_NAME_LENGTH];
+	char suite[TEACUT_MAX_NAME_LENGTH];
 	void* nextObject;
 };
 
 void teacut_traverseList(struct teacut_LinkedList* object)
 {
 	static int calls = 0;
-	if(calls++ >= 10)
-		return;
+	if(calls++ > 1000000)
+	{
+		printf("Infinite recursion detected!");
+		exit(1);
+	}
 
-	printf("nexti osote: %p", object->nextObject);
-
-//	printf("\nblaa blaa suite: %s\n", object->suite);
 	object->test();
 
 	if(object->nextObject == NULL)
@@ -57,14 +57,14 @@ void teacut_traverseList(struct teacut_LinkedList* object)
 	teacut_traverseList( (struct teacut_LinkedList*)object->nextObject );
 }
 
-#define TEST_SUITE(NAME) strncpy(teacut_currentSuite, #NAME, MAX_SUITE_NAME_LENGTH);
+#define TEST_SUITE(NAME) strncpy(teacut_currentSuite, #NAME, TEACUT_MAX_NAME_LENGTH);
 
 #define TEST_FUNCTION(FUNCTION, CODE)						\
 int FUNCTION												\
 {															\
 	printf("\n\nStarting tests\n\n\n");						\
 	struct teacut_LinkedList* teacut_lastObject;			\
-	char teacut_currentSuite[MAX_SUITE_NAME_LENGTH];		\
+	char teacut_currentSuite[TEACUT_MAX_NAME_LENGTH];		\
 	void teacut_doNothing() {}								\
 	struct teacut_LinkedList teacut_firstObject;			\
 	teacut_firstObject.test = teacut_doNothing; 			\
@@ -90,7 +90,7 @@ int FUNCTION												\
 	}															\
 	struct teacut_LinkedList teacut_##NAME; 					\
 	teacut_##NAME.test 	    	 	= NAME; 					\
-/*	strcpy(teacut_##NAME.suite,       teacut_currentSuite);		*/\
+	strcpy(teacut_##NAME.suite,       teacut_currentSuite);		\
 	teacut_##NAME.nextObject 		= NULL;						\
 	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 	\
 	teacut_lastObject 				= &teacut_##NAME;
@@ -105,6 +105,8 @@ int FUNCTION												\
 
 enum teacut_BooleanOperators
 {
+	TEACUT_NO_OP = -1,
+
 #define X(OP, DUMMY) TEACUT##OP,
 	OP_TABLE
 #undef X
@@ -141,6 +143,9 @@ bool teacut_compare(double a, int operation, double b)
 {
 	switch(operation)
 	{
+		case TEACUT_NO_OP:
+			return a;
+
 	#define X(OP_ENUM, OP) 		\
 		case TEACUT##OP_ENUM:	\
 			return a OP b;
@@ -148,33 +153,37 @@ bool teacut_compare(double a, int operation, double b)
 		OP_TABLE
 
 	#undef X
-	}
 
 	// Evaluates to
 	
-	/*switch(operation)
-	{
-		case TEACUT_EQ:
+	/*	case TEACUT_EQ:
 			return a == b;
 		case TEACUT_NE:
 			return a != b;
 		// etc...
-	}*/
+	*/
+	}
 
 	return 0&&(a+b); // Gets rid of compiler warnings
 }
 
-#define TEACUT_ASSERT(ASS) teacut_assert(ASS, #ASS, __LINE__)
+//#define TEACUT_IS_ASSERTION   true
+//#define TEACUT_IS_EXPECTATION false
+/*
+#define TEACUT_ASSERT(ASS) teacut_assert(ASS, #ASS, __LINE__, TEACUT_IS_ASSERTION)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 										\
 	teacut_assertComparasion(A, OP, B, #A, #B, TEACUT_STR_OPERATORS[OP],	\
-							__LINE__)
+							__LINE__, TEACUT_IS_ASSERTION)
 
 #define GET_FUNCTION_NAME(DUMMY1, DUMMY2, DUMMY3, NAME, ...) NAME
 #define ASSERT(...) 														\
 	GET_FUNCTION_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
 
-void teacut_assert(bool assertion, const char* str_ass, int line)
+#define TEACUT_EXPECT(EXP) 					\
+	teacut_testResult += teacut_assert(EXP, #EXP, __LINE__, TEACUT_ISEXPECTATION)
+
+void teacut_assert(bool assertion, const char* str_ass, int line, bool isAssertion)
 {
 	if( ! assertion)
 	{
@@ -184,13 +193,14 @@ void teacut_assert(bool assertion, const char* str_ass, int line)
 		printf(" at ");
 		TEACUT_PRINT_WHITE_BG("line %i", line);
 		printf("\n\n");
-		exit(1);
+		if(isAssertion)
+			exit(1);
 	}
 }
 
 void teacut_assertComparasion(double a, enum teacut_BooleanOperators op, double b,
 							  const char* str_a, const char* str_b, const char* str_operator,
-							  int line)
+							  int line, bool isAssertion)
 {
 	bool assertion = teacut_compare(a, op, b);
 	if( ! assertion)
@@ -202,7 +212,64 @@ void teacut_assertComparasion(double a, enum teacut_BooleanOperators op, double 
 		printf(" at ");
 		TEACUT_PRINT_WHITE_BG("line %i", line);
 		printf("\n\n");
-		exit(1);
+		if(isAssertion)
+			exit(1);
+	}
+}*/
+
+struct teacut_expectationData
+{
+	double a, b;
+	const char *str_a, *str_b, *str_operator, *func;
+	enum teacut_BooleanOperators op;
+	int line;
+	bool isAssertion;
+};
+
+#define TEACUT_ASSERT(ASS) 					\
+	teacut_assert							\
+	(										\
+		(struct teacut_expectationData)		\
+		{									\
+			.a 			 = ASS,				\
+			.str_a		 = #ASS,			\
+			.func 		 = __func__,		\
+			.op			 = TEACUT_NO_OP,	\
+			.line 		 = __LINE__,		\
+			.isAssertion = true				\
+		}									\
+	)
+
+#define TEACUT_ASSERT_CMP(A, OP, B) 		\
+	teacut_assert							\
+	(										\
+	 	(struct teacut_expectationData)		\
+		{									\
+			.a 	   			= A,			\
+			.b 				= B,			\
+			.str_a 			= #A,			\
+			.str_b 			= #B,			\
+			.str_operator 	= #OP,			\
+			.func			= __func__,		\
+			.op				= OP,			\
+			.line 			= __LINE__,		\
+			.isAssertion	= true			\
+		}									\
+	)
+
+#define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
+#define ASSERT(...)		\
+	GET_MACRO_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
+
+void teacut_assert(struct teacut_expectationData expectation)
+{
+	bool assertionPassed = teacut_compare(expectation.a, expectation.op, expectation.b);
+	if( ! assertionPassed)
+	{
+		TEACUT_PRINT_RED("[FAILED]\n\n");
+
+		if(expectation.isAssertion)
+			exit(1);
 	}
 }
 
