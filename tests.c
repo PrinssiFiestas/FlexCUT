@@ -7,7 +7,7 @@ TEST_FUNCTION(main(),
 	TEST(basic_test0,
 		ASSERT(5 == 5);
 		ASSERT(5*1 EQ 6*2);
-		ASSERT(6==5);
+		ASSERT(5 NE 5);
 		)
 
 	TEST(basic_test1,
@@ -22,5 +22,11 @@ TEST_FUNCTION(main(),
 			ASSERT(3*5 EQ 3);
 			)
 	} // optional curly braces for structuring and namespacing
+
+	TEST_SUITE(third_suite)
+	
+	TEST(basic_test3,
+		ASSERT(1 EQ 1);
+		)
 )
 

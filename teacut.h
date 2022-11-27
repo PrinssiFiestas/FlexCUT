@@ -34,7 +34,6 @@
 struct teacut_LinkedList
 {
 	void (*test)();
-	char suite[MAX_SUITE_NAME_LENGTH];
 	void* nextObject;
 };
 
@@ -44,23 +43,8 @@ void teacut_traverseList(struct teacut_LinkedList* object)
 
 	if(object->nextObject == NULL)
 	{
-		TEACUT_PRINT_GREEN("\nSuite %s [PASSED]\n", object->suite);
 		return;
 	}
-
-	char nextSuite[MAX_SUITE_NAME_LENGTH];
-	strcpy(nextSuite, ((struct teacut_LinkedList*)(object->nextObject))->suite);
-
-	bool changedSuite =  strcmp(object->suite, nextSuite);
-	bool firstSuite   = !strcmp(object->suite, "teacut_globalSuite");
-
-	if( (!firstSuite) && changedSuite)
-	{
-		TEACUT_PRINT_GREEN("\nSuite %s [PASSED]\n\n", object->suite);
-	}
-
-	if(changedSuite)
-		printf("Starting suite %s\n\n", nextSuite);
 
 	teacut_traverseList( (struct teacut_LinkedList*)object->nextObject );
 }
@@ -76,7 +60,6 @@ int FUNCTION												\
 	void teacut_doNothing() {}								\
 	struct teacut_LinkedList teacut_firstObject;			\
 	teacut_firstObject.test = teacut_doNothing; 			\
-	strcpy(teacut_firstObject.suite, "teacut_globalSuite");	\
 	teacut_lastObject = &teacut_firstObject; 				\
 															\
 	TEST_SUITE(teacut_globalSuite)							\
@@ -99,7 +82,6 @@ int FUNCTION												\
 	}															\
 	struct teacut_LinkedList teacut_##NAME; 					\
 	teacut_##NAME.test 	    	 	= NAME; 					\
-	strcpy(teacut_##NAME.suite, 	  teacut_currentSuite); 	\
 	teacut_##NAME.nextObject 		= NULL;						\
 	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 	\
 	teacut_lastObject 				= &teacut_##NAME;
@@ -176,7 +158,8 @@ bool teacut_compare(double a, int operation, double b)
 #define TEACUT_ASSERT(ASS) teacut_assert(ASS, #ASS, __LINE__)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 										\
-	teacut_assertComparasion(OP, #A, #B, A, B, TEACUT_STR_OPERATORS[OP], __LINE__)
+	teacut_assertComparasion(A, OP, B, #A, #B, TEACUT_STR_OPERATORS[OP],	\
+							__LINE__)
 
 #define GET_FUNCTION_NAME(DUMMY1, DUMMY2, DUMMY3, NAME, ...) NAME
 #define ASSERT(...) 														\
@@ -196,9 +179,9 @@ void teacut_assert(bool assertion, const char* str_ass, int line)
 	}
 }
 
-void teacut_assertComparasion(enum teacut_BooleanOperators op,
-							  const char* str_a, const char* str_b,
-							  double a, double b, const char* str_operator, int line)
+void teacut_assertComparasion(double a, enum teacut_BooleanOperators op, double b,
+							  const char* str_a, const char* str_b, const char* str_operator,
+							  int line)
 {
 	bool assertion = teacut_compare(a, op, b);
 	if( ! assertion)
