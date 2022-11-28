@@ -220,8 +220,8 @@ void teacut_assertComparasion(double a, enum teacut_BooleanOperators op, double 
 struct teacut_expectationData
 {
 	double a, b;
-	const char *str_a, *str_b, *str_operator, *func;
-	enum teacut_BooleanOperators op;
+	const char *str_a, *str_b, *str_operator, *testName;
+	enum teacut_BooleanOperators operation;
 	int line;
 	bool isAssertion;
 };
@@ -233,8 +233,8 @@ struct teacut_expectationData
 		{									\
 			.a 			 = ASS,				\
 			.str_a		 = #ASS,			\
-			.func 		 = __func__,		\
-			.op			 = TEACUT_NO_OP,	\
+			.testName 	 = __func__,		\
+			.operation	 = TEACUT_NO_OP,	\
 			.line 		 = __LINE__,		\
 			.isAssertion = true				\
 		}									\
@@ -250,8 +250,8 @@ struct teacut_expectationData
 			.str_a 			= #A,			\
 			.str_b 			= #B,			\
 			.str_operator 	= #OP,			\
-			.func			= __func__,		\
-			.op				= OP,			\
+			.testName		= __func__,		\
+			.operation		= OP,			\
 			.line 			= __LINE__,		\
 			.isAssertion	= true			\
 		}									\
@@ -261,10 +261,66 @@ struct teacut_expectationData
 #define ASSERT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
 
+#define TEACUT_EXPECT(EXP) 					\
+	teacut_assert							\
+	(										\
+		(struct teacut_expectationData)		\
+		{									\
+			.a 			 = EXP,				\
+			.str_a		 = #EXP,			\
+			.testName 	 = __func__,		\
+			.operation	 = TEACUT_NO_OP,	\
+			.line 		 = __LINE__,		\
+			.isAssertion = false			\
+		}									\
+	)
+
+#define TEACUT_EXPECT_CMP(A, OP, B) 		\
+	teacut_assert							\
+	(										\
+	 	(struct teacut_expectationData)		\
+		{									\
+			.a 	   			= A,			\
+			.b 				= B,			\
+			.str_a 			= #A,			\
+			.str_b 			= #B,			\
+			.str_operator 	= #OP,			\
+			.testName		= __func__,		\
+			.operation		= OP,			\
+			.line 			= __LINE__,		\
+			.isAssertion	= false			\
+		}									\
+	)
+
+#define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
+#define EXPECT(...)		\
+	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
+
 void teacut_assert(struct teacut_expectationData expectation)
 {
-	bool assertionPassed = teacut_compare(expectation.a, expectation.op, expectation.b);
-	if( ! assertionPassed)
+	bool passed = teacut_compare(expectation.a,
+								 expectation.operation,
+								 expectation.b);
+	
+	static char lastTestName[50];
+
+	TEACUT_PRINT_CYAN("\nlastTestName: %s\n", lastTestName);
+	TEACUT_PRINT_CYAN("testName: %s\n", expectation.testName);
+
+
+	bool testChanged =  strncmp(lastTestName, expectation.testName, 50);
+	strncpy(lastTestName, expectation.testName, 50);
+
+	TEACUT_PRINT_CYAN("lastTestName: %s\n", lastTestName);
+	TEACUT_PRINT_CYAN("testName: %s\n", expectation.testName);
+
+	if(passed && testChanged)
+	{
+		TEACUT_PRINT_GREEN("[PASSED JA PENIS]");
+		return;
+	}
+
+	if( ! passed)
 	{
 		TEACUT_PRINT_RED("[FAILED]\n\n");
 
