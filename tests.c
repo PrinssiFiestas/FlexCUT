@@ -21,7 +21,7 @@ TEST_FUNCTION(main(),
 	TEST(basic_test_from_second_suite,
 		//ASSERT(3 LE 6);
 		//ASSERT(8 NE 5);
-		ASSERT(5 != 5);
+		ASSERT(5 == 5);
 		ASSERT(3*5 EQ 5+10);
 		)
 

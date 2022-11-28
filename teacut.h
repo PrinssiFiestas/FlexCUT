@@ -5,27 +5,29 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
-#define TEACUT_PRINT_RED(...) 			\
-	printf("\033[0;31m"); 				\
-	printf(__VA_ARGS__); 				\
-	printf("\033[0m")
+#define TEACUT_RED "\033[0;31m"
+#define TEACUT_GREEN "\033[0;92m"
+#define TEACUT_CYAN "\033[0;96m"
+#define TEACUT_WHITE_BG "\033[0;107m\033[30m"
+#define TEACUT_DEFAULT_COLOR "\033[0m"
 
-#define TEACUT_PRINT_GREEN(...) 		\
-	printf("\033[0;92m"); 				\
-	printf(__VA_ARGS__); 				\
-	printf("\033[0m")
+int teacut_printColor(const char* color, const char* format, ...)
+{
+	printf("%s", color);
 
-#define TEACUT_PRINT_CYAN(...) 			\
-	printf("\033[0;96m"); 				\
-	printf(__VA_ARGS__); 				\
-	printf("\033[0m")
+	va_list arg;
+	int done;
 
-#define TEACUT_PRINT_WHITE_BG(...) 		\
-	printf("\033[0;107m"); 				\
-	printf("\033[30m"); 				\
-	printf(__VA_ARGS__); 				\
-	printf("\033[0m")
+	va_start(arg, format);
+	done = vfprintf(stdout, format, arg);
+	va_end(arg);
+
+	printf(TEACUT_DEFAULT_COLOR);
+
+	return done;
+}
 
 //-------------------------------------------------------
 
@@ -59,40 +61,63 @@ void teacut_traverseList(struct teacut_LinkedList* object)
 
 #define TEST_SUITE(NAME) strncpy(teacut_currentSuite, #NAME, TEACUT_MAX_NAME_LENGTH);
 
-#define TEST_FUNCTION(FUNCTION, CODE)						\
-int FUNCTION												\
-{															\
-	printf("\n\nStarting tests\n\n\n");						\
-	struct teacut_LinkedList* teacut_lastObject;			\
-	char teacut_currentSuite[TEACUT_MAX_NAME_LENGTH];		\
-	void teacut_doNothing() {}								\
-	struct teacut_LinkedList teacut_firstObject;			\
-	teacut_firstObject.test = teacut_doNothing; 			\
-	teacut_lastObject = &teacut_firstObject; 				\
-															\
-	TEST_SUITE(teacut_globalSuite)							\
-															\
-	CODE													\
-															\
-	teacut_traverseList(&teacut_firstObject);				\
-	TEACUT_PRINT_GREEN("\nAll tests [PASSED]\n\n");			\
-	return 0;												\
+#define TEST_FUNCTION(FUNCTION, CODE)								\
+int FUNCTION														\
+{																	\
+	printf("\n\nStarting tests\n\n\n");								\
+	struct teacut_LinkedList* teacut_lastObject;					\
+	char teacut_currentSuite[TEACUT_MAX_NAME_LENGTH];				\
+	void teacut_doNothing() {}										\
+	struct teacut_LinkedList teacut_firstObject;					\
+	teacut_firstObject.test = teacut_doNothing; 					\
+	teacut_lastObject = &teacut_firstObject; 						\
+	int teacut_totalFailures = 0;									\
+																	\
+	TEST_SUITE(teacut_globalSuite)									\
+																	\
+	CODE															\
+																	\
+	teacut_traverseList(&teacut_firstObject);						\
+																	\
+	if( ! teacut_totalFailures)										\
+	{																\
+		teacut_printColor(TEACUT_GREEN, "\nAll tests [PASSED] in ");\
+		teacut_printColor(TEACUT_GREEN, #FUNCTION);					\
+		printf("\n\n");												\
+		return 0;													\
+	}																\
+	else															\
+	{																\
+		teacut_printColor(TEACUT_RED, "\nTests [FAILED] in ");		\
+		teacut_printColor(TEACUT_RED, #FUNCTION);					\
+		printf("\n\n");												\
+		return 1;													\
+	}																\
 }
 
-#define TEST(NAME, CODE)										\
-	void NAME()													\
-	{															\
-		printf("Test %s ", #NAME); 								\
-																\
-		CODE													\
-																\
-		TEACUT_PRINT_GREEN("[PASSED]\n");						\
-	}															\
-	struct teacut_LinkedList teacut_##NAME; 					\
-	teacut_##NAME.test 	    	 	= NAME; 					\
-	strcpy(teacut_##NAME.suite,       teacut_currentSuite);		\
-	teacut_##NAME.nextObject 		= NULL;						\
-	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 	\
+#define TEST(NAME, CODE)												\
+	void NAME()															\
+	{																	\
+		printf("Test %s ", #NAME);										\
+		int teacut_failuresPerTest = 0;									\
+		const char* testName = #NAME;									\
+																		\
+		/*Get rid of pointless compiler warning of unused variables*/	\
+		teacut_failuresPerTest = teacut_failuresPerTest*(*testName);	\
+																		\
+		CODE															\
+																		\
+		if( ! teacut_failuresPerTest)									\
+			teacut_printColor(TEACUT_GREEN, "[PASSED]\n");				\
+		else															\
+			teacut_totalFailures += teacut_failuresPerTest;				\
+		/* Failure messgaes are in teacut_assert() */					\
+	}																	\
+	struct teacut_LinkedList teacut_##NAME; 							\
+	teacut_##NAME.test 	    	 	= NAME; 							\
+	strcpy(teacut_##NAME.suite,       teacut_currentSuite);				\
+	teacut_##NAME.nextObject 		= NULL;								\
+	teacut_lastObject->nextObject 	= (void*)&teacut_##NAME; 			\
 	teacut_lastObject 				= &teacut_##NAME;
 
 #define OP_TABLE	\
@@ -167,56 +192,6 @@ bool teacut_compare(double a, int operation, double b)
 	return 0&&(a+b); // Gets rid of compiler warnings
 }
 
-//#define TEACUT_IS_ASSERTION   true
-//#define TEACUT_IS_EXPECTATION false
-/*
-#define TEACUT_ASSERT(ASS) teacut_assert(ASS, #ASS, __LINE__, TEACUT_IS_ASSERTION)
-
-#define TEACUT_ASSERT_CMP(A, OP, B) 										\
-	teacut_assertComparasion(A, OP, B, #A, #B, TEACUT_STR_OPERATORS[OP],	\
-							__LINE__, TEACUT_IS_ASSERTION)
-
-#define GET_FUNCTION_NAME(DUMMY1, DUMMY2, DUMMY3, NAME, ...) NAME
-#define ASSERT(...) 														\
-	GET_FUNCTION_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
-
-#define TEACUT_EXPECT(EXP) 					\
-	teacut_testResult += teacut_assert(EXP, #EXP, __LINE__, TEACUT_ISEXPECTATION)
-
-void teacut_assert(bool assertion, const char* str_ass, int line, bool isAssertion)
-{
-	if( ! assertion)
-	{
-		TEACUT_PRINT_RED("[FAILED]");
-		printf("\n\n  Expected ");
-		TEACUT_PRINT_CYAN("%s", str_ass);
-		printf(" at ");
-		TEACUT_PRINT_WHITE_BG("line %i", line);
-		printf("\n\n");
-		if(isAssertion)
-			exit(1);
-	}
-}
-
-void teacut_assertComparasion(double a, enum teacut_BooleanOperators op, double b,
-							  const char* str_a, const char* str_b, const char* str_operator,
-							  int line, bool isAssertion)
-{
-	bool assertion = teacut_compare(a, op, b);
-	if( ! assertion)
-	{
-		TEACUT_PRINT_RED("[FAILED]\n\n");
-		TEACUT_PRINT_CYAN("  %s %s %s", str_a, str_operator, str_b);
-		printf(" evaluated to ");
-		TEACUT_PRINT_CYAN("%g %s %g", a, str_operator, b);
-		printf(" at ");
-		TEACUT_PRINT_WHITE_BG("line %i", line);
-		printf("\n\n");
-		if(isAssertion)
-			exit(1);
-	}
-}*/
-
 struct teacut_expectationData
 {
 	double a, b;
@@ -227,21 +202,21 @@ struct teacut_expectationData
 };
 
 #define TEACUT_ASSERT(ASS) 					\
-	teacut_assert							\
+	teacut_failuresPerTest += teacut_assert				\
 	(										\
 		(struct teacut_expectationData)		\
 		{									\
 			.a 			 = ASS,				\
 			.str_a		 = #ASS,			\
-			.testName 	 = __func__,		\
 			.operation	 = TEACUT_NO_OP,	\
 			.line 		 = __LINE__,		\
-			.isAssertion = true				\
+			.isAssertion = true,			\
+			.testName	 = testName			\
 		}									\
 	)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 		\
-	teacut_assert							\
+	teacut_failuresPerTest += teacut_assert				\
 	(										\
 	 	(struct teacut_expectationData)		\
 		{									\
@@ -250,10 +225,10 @@ struct teacut_expectationData
 			.str_a 			= #A,			\
 			.str_b 			= #B,			\
 			.str_operator 	= #OP,			\
-			.testName		= __func__,		\
 			.operation		= OP,			\
 			.line 			= __LINE__,		\
-			.isAssertion	= true			\
+			.isAssertion	= true,			\
+			.testName		= testName		\
 		}									\
 	)
 
@@ -262,33 +237,33 @@ struct teacut_expectationData
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
 
 #define TEACUT_EXPECT(EXP) 					\
-	teacut_assert							\
+	teacut_failuresPerTest += teacut_assert				\
 	(										\
 		(struct teacut_expectationData)		\
 		{									\
 			.a 			 = EXP,				\
 			.str_a		 = #EXP,			\
-			.testName 	 = __func__,		\
 			.operation	 = TEACUT_NO_OP,	\
 			.line 		 = __LINE__,		\
-			.isAssertion = false			\
+			.isAssertion = false,			\
+			.testName	 = testName			\
 		}									\
 	)
 
 #define TEACUT_EXPECT_CMP(A, OP, B) 		\
-	teacut_assert							\
+	teacut_failuresPerTest += teacut_assert				\
 	(										\
 	 	(struct teacut_expectationData)		\
 		{									\
-			.a 	   			= A,			\
-			.b 				= B,			\
-			.str_a 			= #A,			\
-			.str_b 			= #B,			\
-			.str_operator 	= #OP,			\
-			.testName		= __func__,		\
-			.operation		= OP,			\
-			.line 			= __LINE__,		\
-			.isAssertion	= false			\
+			.a 	   		  = A,				\
+			.b 			  = B,				\
+			.str_a 		  = #A,				\
+			.str_b 		  = #B,				\
+			.str_operator = #OP,			\
+			.operation	  = OP,				\
+			.line 		  = __LINE__,		\
+			.isAssertion  = false,			\
+			.testName	  = testName		\
 		}									\
 	)
 
@@ -296,37 +271,27 @@ struct teacut_expectationData
 #define EXPECT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
 
-void teacut_assert(struct teacut_expectationData expectation)
+#define TEACUT_FAILURE 1
+
+int teacut_assert(struct teacut_expectationData expectation)
 {
 	bool passed = teacut_compare(expectation.a,
 								 expectation.operation,
 								 expectation.b);
-	
-	static char lastTestName[50];
 
-	TEACUT_PRINT_CYAN("\nlastTestName: %s\n", lastTestName);
-	TEACUT_PRINT_CYAN("testName: %s\n", expectation.testName);
-
-
-	bool testChanged =  strncmp(lastTestName, expectation.testName, 50);
-	strncpy(lastTestName, expectation.testName, 50);
-
-	TEACUT_PRINT_CYAN("lastTestName: %s\n", lastTestName);
-	TEACUT_PRINT_CYAN("testName: %s\n", expectation.testName);
-
-	if(passed && testChanged)
-	{
-		TEACUT_PRINT_GREEN("[PASSED JA PENIS]");
-		return;
-	}
+	/* Passing messages are in TEST() macro */
 
 	if( ! passed)
 	{
-		TEACUT_PRINT_RED("[FAILED]\n\n");
+		teacut_printColor(TEACUT_RED, "[FAILED]\n");
 
 		if(expectation.isAssertion)
-			exit(1);
+			exit(EXIT_FAILURE);
+		else 
+			return TEACUT_FAILURE;
 	}
+
+	return 0;
 }
 
 #endif //TEACUT_H
