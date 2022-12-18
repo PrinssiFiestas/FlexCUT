@@ -7,11 +7,11 @@
 #include <string.h>
 #include <stdarg.h>
 
-#define TEACUT_RED "\033[0;31m"
-#define TEACUT_GREEN "\033[0;92m"
-#define TEACUT_CYAN "\033[0;96m"
-#define TEACUT_WHITE_BG "\033[0;107m\033[30m"
-#define TEACUT_DEFAULT_COLOR "\033[0m"
+#define TEACUT_RED 				"\033[0;31m"
+#define TEACUT_GREEN 			"\033[0;92m"
+#define TEACUT_CYAN 			"\033[0;96m"
+#define TEACUT_WHITE_BG 		"\033[0;107m\033[30m"
+#define TEACUT_DEFAULT_COLOR 	"\033[0m"
 
 int teacut_printColor(const char* color, const char* format, ...)
 {
@@ -43,7 +43,7 @@ struct teacut_LinkedList
 void teacut_traverseList(struct teacut_LinkedList* object)
 {
 	static int calls = 0;
-	if(calls++ > 1000000)
+	if(calls++ > 100000)
 	{
 		printf("Infinite recursion detected!");
 		exit(1);
@@ -84,14 +84,14 @@ int FUNCTION														\
 		teacut_printColor(TEACUT_GREEN, "\nAll tests [PASSED] in ");\
 		teacut_printColor(TEACUT_GREEN, #FUNCTION);					\
 		printf("\n\n");												\
-		return 0;													\
+		return EXIT_SUCCESS;										\
 	}																\
 	else															\
 	{																\
 		teacut_printColor(TEACUT_RED, "\nTests [FAILED] in ");		\
 		teacut_printColor(TEACUT_RED, #FUNCTION);					\
 		printf("\n\n");												\
-		return 1;													\
+		return EXIT_FAILURE;										\
 	}																\
 }
 
@@ -103,7 +103,7 @@ int FUNCTION														\
 		const char* testName = #NAME;									\
 																		\
 		/*Get rid of pointless compiler warning of unused variables*/	\
-		teacut_failuresPerTest = teacut_failuresPerTest*(*testName);	\
+		teacut_failuresPerTest = teacut_failuresPerTest + 0*(*testName);\
 																		\
 		CODE															\
 																		\
@@ -163,7 +163,7 @@ const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {
 };
 
 // Boolean operations as a function
-// Allows macros EQ, NE, etc. to be used as operators
+// Allows macros EQ, NE, etc. to be used like operators
 bool teacut_compare(double a, int operation, double b)
 {
 	switch(operation)
@@ -189,7 +189,7 @@ bool teacut_compare(double a, int operation, double b)
 	*/
 	}
 
-	return 0&&(a+b); // Gets rid of compiler warnings
+	return 0&&(a+b); // Gets rid of pointless compiler warnings
 }
 
 struct teacut_expectationData
@@ -202,21 +202,21 @@ struct teacut_expectationData
 };
 
 #define TEACUT_ASSERT(ASS) 					\
-	teacut_failuresPerTest += teacut_assert				\
+	teacut_failuresPerTest += teacut_assert	\
 	(										\
 		(struct teacut_expectationData)		\
 		{									\
-			.a 			 = ASS,				\
-			.str_a		 = #ASS,			\
-			.operation	 = TEACUT_NO_OP,	\
-			.line 		 = __LINE__,		\
-			.isAssertion = true,			\
-			.testName	 = testName			\
+			.a 			 	= ASS,			\
+			.str_a		 	= #ASS,			\
+			.operation	 	= TEACUT_NO_OP,	\
+			.line 		 	= __LINE__,		\
+			.isAssertion 	= true,			\
+			.testName		= testName		\
 		}									\
 	)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 		\
-	teacut_failuresPerTest += teacut_assert				\
+	teacut_failuresPerTest += teacut_assert	\
 	(										\
 	 	(struct teacut_expectationData)		\
 		{									\
@@ -237,33 +237,33 @@ struct teacut_expectationData
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_ASSERT_CMP, DUMMY, TEACUT_ASSERT)(__VA_ARGS__)
 
 #define TEACUT_EXPECT(EXP) 					\
-	teacut_failuresPerTest += teacut_assert				\
+	teacut_failuresPerTest += teacut_assert	\
 	(										\
 		(struct teacut_expectationData)		\
 		{									\
-			.a 			 = EXP,				\
-			.str_a		 = #EXP,			\
-			.operation	 = TEACUT_NO_OP,	\
-			.line 		 = __LINE__,		\
-			.isAssertion = false,			\
-			.testName	 = testName			\
+			.a 			 	= EXP,			\
+			.str_a		 	= #EXP,			\
+			.operation	 	= TEACUT_NO_OP,	\
+			.line 		 	= __LINE__,		\
+			.isAssertion 	= false,		\
+			.testName	 	= testName		\
 		}									\
 	)
 
 #define TEACUT_EXPECT_CMP(A, OP, B) 		\
-	teacut_failuresPerTest += teacut_assert				\
+	teacut_failuresPerTest += teacut_assert	\
 	(										\
 	 	(struct teacut_expectationData)		\
 		{									\
-			.a 	   		  = A,				\
-			.b 			  = B,				\
-			.str_a 		  = #A,				\
-			.str_b 		  = #B,				\
-			.str_operator = #OP,			\
-			.operation	  = OP,				\
-			.line 		  = __LINE__,		\
-			.isAssertion  = false,			\
-			.testName	  = testName		\
+			.a 	   		  	= A,			\
+			.b 			  	= B,			\
+			.str_a 		  	= #A,			\
+			.str_b 		  	= #B,			\
+			.str_operator 	= #OP,			\
+			.operation	  	= OP,			\
+			.line 		  	= __LINE__,		\
+			.isAssertion  	= false,		\
+			.testName	  	= testName		\
 		}									\
 	)
 
