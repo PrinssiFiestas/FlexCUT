@@ -63,10 +63,58 @@ int teacut_colorprintf(const char* color, const char* format, ...)
 	return done;
 }
 
+struct teacut_TestAndSuiteData
+{
+	int testErrors, suiteErrors;
+	char *testName, *suiteName;
+	bool testDefined, suiteDefined;
+};
 
-static int teacut_errors = 0;
-static char* teacut_testName  = "";
-static char* teacut_suiteName = "";
+struct teacut_TestAndSuiteData teacut_data = {.testName = "", .suiteName = ""};
+
+void teacut_firstSet()
+{
+	static bool setted = false;
+	if ( ! setted)
+	{
+		printf("\n\nStarting tests\n\n");
+		setted = true;
+	}
+}
+
+void teacut_setTest(char* name)
+{
+	teacut_firstSet();
+
+	if (name != NULL)
+	{
+		teacut_data.testName = name;
+		teacut_data.testDefined = true;
+	}
+	else
+	{
+		teacut_data.testName = "";
+		teacut_data.testDefined = false;
+		teacut_data.testErrors = 0;
+	}
+}
+
+void teacut_setSuite(char* name)
+{
+	teacut_firstSet();
+
+	if (name != NULL)
+	{
+		teacut_data.suiteName = name;
+		teacut_data.suiteDefined = true;
+	}
+	else
+	{
+		teacut_data.suiteName = "";
+		teacut_data.suiteDefined = false;
+		teacut_data.suiteErrors = 0;
+	}
+}
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -127,7 +175,7 @@ bool teacut_compare(double a, int operation, double b)
 
 	#undef X
 
-	// Evaluates to
+	// Expands to
 	
 	/*	case TEACUT_EQ:
 			return a == b;
@@ -149,13 +197,34 @@ struct teacut_ExpectationData
 	bool isAssertion;
 };
 
+void teacut_printSuiteFailMessage(struct teacut_ExpectationData* expectation)
+{
+	if (teacut_data.testDefined && teacut_data.suiteDefined)
+	{
+		fprintf(stderr, "Suite \"%s\" ", teacut_data.suiteName);
+		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
+	}
+
+	if ( ! teacut_data.testDefined && teacut_data.suiteDefined)
+	{
+		fprintf(stderr, "Testing in \"%s\" ", expectation->func);
+		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
+	}
+
+	if (teacut_data.testDefined && ! teacut_data.suiteDefined)
+	{
+		fprintf(stderr, "Suite \"%s\" ", expectation->func);
+		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
+	}
+}
+
+// SIIVOO TÄÄ YLÖS
+void teacut_printResult(const char*, const char*, int);
+
 void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 {
-	bool testNameIsEmpty  = !strcmp(teacut_testName,  "");
-	bool suiteNameIsEmpty = !strcmp(teacut_suiteName, "");
-
-	const char* finalTestName = ! testNameIsEmpty  ? teacut_testName  :
-							 	! suiteNameIsEmpty ? teacut_suiteName :
+	const char* finalTestName = teacut_data.testDefined  ? teacut_data.testName  :
+							 	teacut_data.suiteDefined ? teacut_data.suiteName :
 								expectation->func;
 
 	fprintf(stderr, "\nTest \"%s\" ", finalTestName);
@@ -175,23 +244,13 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 				expectation->str_operator, expectation->b);
 	fprintf(stdout, ".\n\n");
 
-	if ( ! testNameIsEmpty && ! suiteNameIsEmpty)
-	{
-		fprintf(stderr, "Suite \"%s\" ", teacut_suiteName);
-		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
-	}
+	if (expectation->isAssertion && teacut_data.testDefined)
+		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
+	if (expectation->isAssertion && teacut_data.suiteDefined)
+		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);
 
-	if (testNameIsEmpty && ! suiteNameIsEmpty)
-	{
-		fprintf(stderr, "Testing in \"%s\" ", expectation->func);
-		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
-	}
-
-	if ( ! testNameIsEmpty && suiteNameIsEmpty)
-	{
-		fprintf(stderr, "Suite \"%s\" ", expectation->func);
-		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
-	}
+	//if(expectation->isAssertion)
+		//teacut_printSuiteFailMessage(expectation);
 }
 
 #define TEACUT_ASSERT(ASS) 					\
@@ -272,9 +331,13 @@ int teacut_assert(struct teacut_ExpectationData expectation)
 								 expectation.operation,
 								 expectation.b);
 
-	if( ! passed)
+	if ( ! passed)
 	{
-		teacut_errors += 1;
+		if (teacut_data.testDefined)
+			teacut_data.testErrors++;
+		if (teacut_data.suiteDefined)
+			teacut_data.suiteErrors++;
+
 		teacut_printFailMessage(&expectation);
 
 		if(expectation.isAssertion)
@@ -286,8 +349,36 @@ int teacut_assert(struct teacut_ExpectationData expectation)
 	return 0;
 }
 
-#define TEST_SUITE(SUITE_NAME)		\
-	teacut_##SUITE_NAME = gvfdsg
+void teacut_printResult(const char* testOrSuite, const char* testOrSuiteName, int errors)
+{
+
+	if ( ! errors)
+	{
+		printf("\n%s \"%s\" ", testOrSuite, testOrSuiteName);
+		teacut_colorprintf(TEACUT_GREEN, "[PASSED] \n");
+	}
+	else
+	{
+		fprintf(stderr, "\n%s \"%s\" ", testOrSuite, testOrSuiteName);
+		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED] \n");
+	}
+}
+
+#define TEST_SUITE(SUITE_NAME)											\
+	teacut_setSuite(#SUITE_NAME);										\
+	auto void teacut_suite_##SUITE_NAME ();								\
+	teacut_suite_##SUITE_NAME ();										\
+	teacut_printResult("Suite", #SUITE_NAME , teacut_data.suiteErrors);	\
+	teacut_setSuite(NULL);												\
+	void teacut_suite_##SUITE_NAME ()
+
+#define TEST(TEST_NAME)													\
+	teacut_setTest(#TEST_NAME);											\
+	auto void teacut_test_##TEST_NAME ();								\
+	teacut_test_##TEST_NAME ();											\
+	teacut_printResult("Test", #TEST_NAME , teacut_data.testErrors);	\
+	teacut_setTest(NULL);												\
+	void teacut_test_##TEST_NAME ()
 
 //-------------------------------------------------------
 
@@ -301,22 +392,24 @@ int factorial(int x)
 
 int main()
 {
-	/*ME*/teacut_suiteName = "factorial";
-	/*ME*/auto void teacut_test_factorial();
-	/*ME*/teacut_test_factorial();
-	/*ME*///printSuiteResult();
-	/*ME*/teacut_suiteName = "";
-	/*ME*/void teacut_test_factorial()
+	TEST_SUITE(factorial)
 	{
-		/*ME*/teacut_testName = "zero";
-		/*ME*/auto void teacut_test_zero();
-		/*ME*/teacut_test_zero();
-		/*ME*///printTestResult();
-		/*ME*/teacut_testName = "";
-		/*ME*/void teacut_test_zero()
+		TEST(zero)
 		{
-			ASSERT(factorial(0) EQ 0);
-			ASSERT(0 == 0);
+			ASSERT(factorial(0) EQ 1);
+		}
+
+		TEST(expectation)
+		{
+			EXPECT(factorial(3) EQ -1);
+		}
+
+		TEST(positiveNumbers)
+		{
+			ASSERT(factorial(1) EQ 1);
+			ASSERT(factorial(2) EQ 2);
+			ASSERT(factorial(3) EQ 6);
+			ASSERT(factorial(12) EQ 479001600);
 		}
 	}
 
