@@ -25,43 +25,16 @@
 
 //--------------------------------------------------
 
-#define TEACUT_RED 				"\033[0;31m"
+/*#define TEACUT_RED 				"\033[0;31m"
 #define TEACUT_GREEN 			"\033[0;92m"
 #define TEACUT_CYAN 			"\033[0;96m"
 #define TEACUT_WHITE_BG 		"\033[0;107m\033[30m"
-#define TEACUT_DEFAULT_COLOR 	"\033[0m"
+#define TEACUT_DEFAULT_COLOR 	"\033[0m"*/
 
-int teacut_colorfprintf(const char* color, FILE* file, const char* format, ...)
-{
-	fprintf(file, "%s", color);
-
-	va_list arg;
-	int done;
-
-	va_start(arg, format);
-	done = vfprintf(file, format, arg);
-	va_end(arg);
-
-	fprintf(file, TEACUT_DEFAULT_COLOR);
-
-	return done;
-}
-
-int teacut_colorprintf(const char* color, const char* format, ...)
-{
-	printf("%s", color);
-
-	va_list arg;
-	int done;
-
-	va_start(arg, format);
-	done = vfprintf(stdout, format, arg);
-	va_end(arg);
-
-	printf(TEACUT_DEFAULT_COLOR);
-
-	return done;
-}
+#define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
+#define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
+#define TEACUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
+#define TEACUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
 
 struct teacut_TestAndSuiteData
 {
@@ -197,7 +170,7 @@ struct teacut_ExpectationData
 	bool isAssertion;
 };
 
-void teacut_printSuiteFailMessage(struct teacut_ExpectationData* expectation)
+/*void teacut_printSuiteFailMessage(struct teacut_ExpectationData* expectation)
 {
 	if (teacut_data.testDefined && teacut_data.suiteDefined)
 	{
@@ -216,7 +189,7 @@ void teacut_printSuiteFailMessage(struct teacut_ExpectationData* expectation)
 		fprintf(stderr, "Suite \"%s\" ", expectation->func);
 		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]\n");
 	}
-}
+}*/
 
 // SIIVOO TÄÄ YLÖS
 void teacut_printResult(const char*, const char*, int);
@@ -227,7 +200,7 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 							 	teacut_data.suiteDefined ? teacut_data.suiteName :
 								expectation->func;
 
-	fprintf(stderr, "\nTest \"%s\" ", finalTestName);
+	/*fprintf(stderr, "\nTest \"%s\" ", finalTestName);
 	teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED]");
 	fprintf(stderr, " in %s ", __FILE__);
 	teacut_colorfprintf(TEACUT_WHITE_BG, stderr, "line %i", expectation->line);
@@ -242,7 +215,19 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 	if (expectation->operation != TEACUT_NO_OP)
 		teacut_colorfprintf(TEACUT_RED, stderr, " %s %g",
 				expectation->str_operator, expectation->b);
-	fprintf(stdout, ".\n\n");
+	fprintf(stderr, ".\n\n");*/
+
+	fprintf(stderr,
+			"\nTest \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
+			finalTestName, __FILE__, expectation->line);
+
+	fprintf(stderr, TEACUT_CYAN("%s"), expectation->str_a);
+	if (expectation->operation != TEACUT_NO_OP)
+		fprintf(stderr, TEACUT_CYAN(" %s %s"), expectation->str_operator, expectation->str_b);
+	fprintf(stderr, " evaluated to " TEACUT_RED("%g"), expectation->a);
+	if (expectation->operation != TEACUT_NO_OP)
+		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
+	fprintf(stderr, ".\n");
 
 	if (expectation->isAssertion && teacut_data.testDefined)
 		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
@@ -354,13 +339,16 @@ void teacut_printResult(const char* testOrSuite, const char* testOrSuiteName, in
 
 	if ( ! errors)
 	{
-		printf("\n%s \"%s\" ", testOrSuite, testOrSuiteName);
-		teacut_colorprintf(TEACUT_GREEN, "[PASSED] \n");
+		//printf("\n%s \"%s\" ", testOrSuite, testOrSuiteName);
+		//teacut_colorprintf(TEACUT_GREEN, "[PASSED] \n");
+		printf("\n%s \"%s\" " TEACUT_GREEN("[PASSED]") " \n", testOrSuite, testOrSuiteName);
 	}
 	else
 	{
-		fprintf(stderr, "\n%s \"%s\" ", testOrSuite, testOrSuiteName);
-		teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED] \n");
+		//fprintf(stderr, "\n%s \"%s\" ", testOrSuite, testOrSuiteName);
+		//teacut_colorfprintf(TEACUT_RED, stderr, "[FAILED] \n");
+		fprintf(stderr, "\n%s \"%s\" " TEACUT_RED("[FAILED]") " \n",
+				testOrSuite, testOrSuiteName);
 	}
 }
 
