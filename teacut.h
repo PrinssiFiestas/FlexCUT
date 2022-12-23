@@ -2,6 +2,11 @@
 #define TEACUT_H
 
 #include <stdbool.h>
+#ifdef __cplusplus
+#include <atomic>
+#else
+#include <stdatomic.h>
+#endif
 
 // Does nothing when expression is true
 // Exits program and prints failure message when expression is false
@@ -21,19 +26,19 @@ int EXPECT(bool expression);
 
 struct teacut_TestAndSuiteData
 {
-	// change these to atomic ones
-	int testFails, suiteFails, expectationFails;
-	char *testName, *suiteName; // ei salee tarvii olla eriksee? ois yks name vaa
+#ifdef __cplusplus
+	std::atomic<int> testFails, suiteFails, expectationFails;
+#else
+	atomic_int testFails, suiteFails, expectationFails;
+#endif
+	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
 };
 
 struct teacut_TestAndSuiteData teacut_data = {};
 
-// TÄÄ ON TUOREIN IDIS
 struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_data;
 struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_data;
-// assert macro sit
-// assert(args, teacut_shadow->testDefined || teacut_shadow->suiteDefined ? teacut_shadow : teacut_dummy)
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -117,7 +122,7 @@ struct teacut_ExpectationData
 };
 
 // SIIVOO TÄÄ YLÖS
-void teacut_printResult(struct teacut_TestAndSuiteData*);
+void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
 void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 							 struct teacut_TestAndSuiteData* data)
@@ -228,16 +233,6 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 
 #define TEACUT_FAILURE 1
 
-// salee paskaa
-struct teacut_TestData
-{
-	const char* name;
-	int errors;
-	const bool defined;
-};
-struct teacut_TestData teacut_test  = {};
-struct teacut_TestData teacut_suite = {};
-
 int teacut_assert(struct teacut_ExpectationData expectation,
 				  struct teacut_TestAndSuiteData* data)
 {
@@ -247,16 +242,6 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 
 	if ( ! passed)
 	{
-		/*
-		if (teacut_data.testDefined)
-			teacut_data.testErrors++;
-		if (teacut_data.suiteDefined)
-			teacut_data.suiteErrors++;
-			*/
-
-		// EIII paskaa. ei voi lisää joka assertiol vaa lisätää laskurii
-		// makros sit lisätää vast testikohtaset errorit
-
 		teacut_data.expectationFails++; // muuta atomic
 
 		if (data->testDefined || data->suiteDefined)
@@ -273,8 +258,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 	return 0;
 }
 
-// nimee uusiks!
-void teacut_printResult(struct teacut_TestAndSuiteData* data)
+void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 {
 	const char* testOrSuite = data->testDefined ? "Test" : "Suite";
 	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName; //
@@ -290,7 +274,7 @@ void teacut_printResult(struct teacut_TestAndSuiteData* data)
 	}
 }
 
-#define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE/*onks tarpeelline?*/)				\
+#define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
 	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
 																					\
 	/*oisko täst hyötyy?*/															\
@@ -299,11 +283,11 @@ void teacut_printResult(struct teacut_TestAndSuiteData* data)
 	{																				\
 		struct teacut_TestAndSuiteData teacut_##TEST_OR_SUITE = 					\
 		{																			\
-			.TEST_OR_SUITE##Name = #NAME,/*onks tarpeelline?*/						\
+			.TEST_OR_SUITE##Name = #NAME,											\
 			.TEST_OR_SUITE##Defined = true											\
 		};																			\
 		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
-		teacut_printResult(&teacut_##TEST_OR_SUITE);								\
+		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
 	}																				\
 	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
 
