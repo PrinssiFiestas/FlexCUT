@@ -1,34 +1,36 @@
+#define TEACUT_IMPLEMENTATION
 #include "teacut.h"
 
-TEST_FUNCTION(main(),
+int factorial(int x)
+{
+	int y = 1;
+	for(int i = 1; i <= x; i++)
+		y *= i;
+	return y;
+}
 
-	TEST_SUITE(first_suite)
+int main()
+{
+	EXPECT(0+0 EQ 1+1);
 
-	TEST(basic_test0,
-		ASSERT(5 == 5);
-		//ASSERT(5*1 NE 6*2);
-		//ASSERT(5 GE 5);
-		)
+	TEST_SUITE(factorial)
+	{
+		TEST(zero)
+		{
+			ASSERT(factorial(0) EQ 1);
+		}
 
-	TEST(basic_test1,
-		//ASSERT(1 LE 4);
-		ASSERT(3 LE 9);
-		EXPECT(1 == 2);
-		)
+		EXPECT(factorial(3) EQ -1);
 
-	TEST_SUITE(second_suite)
+		TEST(positiveNumbers)
+		{
+			ASSERT(factorial(1) EQ 1);
+			ASSERT(factorial(2) EQ 2);
+			ASSERT(factorial(3) EQ 6);
+			ASSERT(factorial(12) EQ 479001600);
+		}
+	}
 
-	TEST(basic_test_from_second_suite,
-		//ASSERT(3 LE 6);
-		//ASSERT(8 NE 5);
-		ASSERT(5 == 5);
-		ASSERT(3*5 EQ 5+10);
-		)
-
-	TEST_SUITE(third_suite)
-	
-	TEST(basic_test3,
-		//ASSERT(1 EQ 1);
-		)
-)
+	return 0;
+}
 
