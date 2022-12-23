@@ -1,29 +1,18 @@
+#ifndef TEACUT_H
+#define TEACUT_H
+
+#include <stdbool.h>
+
+// Does nothing when expression is true
+// Exits program and prints failure message when expression is false
+void ASSERT(bool expression);
+
+// Returns 0 when expression is true
+// Prints failure message and returns 1 when expression is false
+int EXPECT(bool expression);
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdarg.h>
-
-/*int main()
-{
-	TEST_SUITE(factorial)
-	{
-		TEST(zero)
-		{
-			ASSERT(factorial(0) EQ 1);
-		}
-
-		TEST(positive)
-		{
-			ASSERT(factorial(1) EQ 1);
-			ASSERT(factorial(2) EQ 2);
-			ASSERT(factorial(3) EQ 6);
-		}
-	}
-	return 0;
-}*/
-
-//--------------------------------------------------
 
 #define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
 #define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
@@ -32,56 +21,19 @@
 
 struct teacut_TestAndSuiteData
 {
-	int testErrors, suiteErrors;
-	char *testName, *suiteName;
+	// change these to atomic ones
+	int testFails, suiteFails, expectationFails;
+	char *testName, *suiteName; // ei salee tarvii olla eriksee? ois yks name vaa
 	bool testDefined, suiteDefined;
 };
 
-struct teacut_TestAndSuiteData teacut_data = {.testName = "", .suiteName = ""};
+struct teacut_TestAndSuiteData teacut_data = {};
 
-void teacut_firstSet()
-{
-	static bool setted = false;
-	if ( ! setted)
-	{
-		printf("\n\nStarting tests\n\n");
-		setted = true;
-	}
-}
-
-void teacut_setTest(char* name)
-{
-	teacut_firstSet();
-
-	if (name != NULL)
-	{
-		teacut_data.testName = name;
-		teacut_data.testDefined = true;
-	}
-	else
-	{
-		teacut_data.testName = "";
-		teacut_data.testDefined = false;
-		teacut_data.testErrors = 0;
-	}
-}
-
-void teacut_setSuite(char* name)
-{
-	teacut_firstSet();
-
-	if (name != NULL)
-	{
-		teacut_data.suiteName = name;
-		teacut_data.suiteDefined = true;
-	}
-	else
-	{
-		teacut_data.suiteName = "";
-		teacut_data.suiteDefined = false;
-		teacut_data.suiteErrors = 0;
-	}
-}
+// TÄÄ ON TUOREIN IDIS
+struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_data;
+struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_data;
+// assert macro sit
+// assert(args, teacut_shadow->testDefined || teacut_shadow->suiteDefined ? teacut_shadow : teacut_dummy)
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -99,7 +51,7 @@ enum teacut_BooleanOperators
 	OP_TABLE
 #undef X
 
-// Evaluates to
+// Expands to
 
 /*	TEACUT_EQ,
 	TEACUT_NE,
@@ -165,16 +117,21 @@ struct teacut_ExpectationData
 };
 
 // SIIVOO TÄÄ YLÖS
-void teacut_printResult(const char*, const char*, int);
+void teacut_printResult(struct teacut_TestAndSuiteData*);
 
-void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
+void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
+							 struct teacut_TestAndSuiteData* data)
 {
-	const char* finalTestName = teacut_data.testDefined  ? teacut_data.testName  :
-							 	teacut_data.suiteDefined ? teacut_data.suiteName :
+	const char* finalTestName = data->testDefined  ? data->testName  :
+								data->suiteDefined ? data->suiteName :
 								expectation->func;
 
+	if (expectation->isAssertion)
+		fprintf(stderr, "\nAssertion ");
+	else
+		fprintf(stderr, "\nExpectation ");
 	fprintf(stderr,
-			"\nTest \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
+			"in \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
 			finalTestName, __FILE__, expectation->line);
 
 	fprintf(stderr, TEACUT_CYAN("%s"), expectation->str_a);
@@ -185,14 +142,15 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
 
-	if (expectation->isAssertion && teacut_data.testDefined)
+	// MUISTA KORJAA
+/*	if (expectation->isAssertion && teacut_data.testDefined)
 		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
 	if (expectation->isAssertion && teacut_data.suiteDefined)
-		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);
-
-	//if(expectation->isAssertion)
-		//teacut_printSuiteFailMessage(expectation);
+		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);*/
 }
+
+#define TEACUT_DATA (teacut_shadow->testDefined || teacut_shadow->suiteDefined ?	\
+					 teacut_shadow : teacut_dummy)
 
 #define TEACUT_ASSERT(ASS) 					\
 	teacut_assert							\
@@ -205,7 +163,8 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 			.line 		 	= __LINE__,		\
 			.isAssertion 	= true,			\
 			.func			= __func__		\
-		}									\
+		},									\
+		TEACUT_DATA							\
 	)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 					\
@@ -222,7 +181,8 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 			.line 			= __LINE__,					\
 			.isAssertion	= true,						\
 			.func			= __func__					\
-		}												\
+		},												\
+		TEACUT_DATA										\
 	)
 
 #define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
@@ -240,7 +200,8 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 			.line 		 	= __LINE__,		\
 			.isAssertion 	= false,		\
 			.func			= __func__		\
-		}									\
+		},									\
+		TEACUT_DATA							\
 	)
 
 #define TEACUT_EXPECT_CMP(A, OP, B) 					\
@@ -257,7 +218,8 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 			.line 		  	= __LINE__,					\
 			.isAssertion  	= false,					\
 			.func			= __func__					\
-		}												\
+		},												\
+		TEACUT_DATA										\
 	)
 
 #define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
@@ -266,7 +228,18 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation)
 
 #define TEACUT_FAILURE 1
 
-int teacut_assert(struct teacut_ExpectationData expectation)
+// salee paskaa
+struct teacut_TestData
+{
+	const char* name;
+	int errors;
+	const bool defined;
+};
+struct teacut_TestData teacut_test  = {};
+struct teacut_TestData teacut_suite = {};
+
+int teacut_assert(struct teacut_ExpectationData expectation,
+				  struct teacut_TestAndSuiteData* data)
 {
 	bool passed = teacut_compare(expectation.a,
 								 expectation.operation,
@@ -274,12 +247,22 @@ int teacut_assert(struct teacut_ExpectationData expectation)
 
 	if ( ! passed)
 	{
+		/*
 		if (teacut_data.testDefined)
 			teacut_data.testErrors++;
 		if (teacut_data.suiteDefined)
 			teacut_data.suiteErrors++;
+			*/
 
-		teacut_printFailMessage(&expectation);
+		// EIII paskaa. ei voi lisää joka assertiol vaa lisätää laskurii
+		// makros sit lisätää vast testikohtaset errorit
+
+		teacut_data.expectationFails++; // muuta atomic
+
+		if (data->testDefined || data->suiteDefined)
+			data->expectationFails++;
+
+		teacut_printFailMessage(&expectation, data);
 
 		if(expectation.isAssertion)
 			exit(EXIT_FAILURE);
@@ -290,10 +273,13 @@ int teacut_assert(struct teacut_ExpectationData expectation)
 	return 0;
 }
 
-void teacut_printResult(const char* testOrSuite, const char* testOrSuiteName, int errors)
+// nimee uusiks!
+void teacut_printResult(struct teacut_TestAndSuiteData* data)
 {
+	const char* testOrSuite = data->testDefined ? "Test" : "Suite";
+	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName; //
 
-	if ( ! errors)
+	if ( ! data->expectationFails)
 	{
 		printf("\n%s \"%s\" " TEACUT_GREEN("[PASSED]") " \n", testOrSuite, testOrSuiteName);
 	}
@@ -304,21 +290,27 @@ void teacut_printResult(const char* testOrSuite, const char* testOrSuiteName, in
 	}
 }
 
-#define TEST_SUITE(SUITE_NAME)											\
-	teacut_setSuite(#SUITE_NAME);										\
-	auto void teacut_suite_##SUITE_NAME ();								\
-	teacut_suite_##SUITE_NAME ();										\
-	teacut_printResult("Suite", #SUITE_NAME , teacut_data.suiteErrors);	\
-	teacut_setSuite(NULL);												\
-	void teacut_suite_##SUITE_NAME ()
+#define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE/*onks tarpeelline?*/)				\
+	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
+																					\
+	/*oisko täst hyötyy?*/															\
+	/*struct teacut_TestData* teacut_calling##TEST_OR_SUITE = &teacut_##TEST_OR_SUITE ;	*/\
+																					\
+	{																				\
+		struct teacut_TestAndSuiteData teacut_##TEST_OR_SUITE = 					\
+		{																			\
+			.TEST_OR_SUITE##Name = #NAME,/*onks tarpeelline?*/						\
+			.TEST_OR_SUITE##Defined = true											\
+		};																			\
+		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
+		teacut_printResult(&teacut_##TEST_OR_SUITE);								\
+	}																				\
+	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
 
-#define TEST(TEST_NAME)													\
-	teacut_setTest(#TEST_NAME);											\
-	auto void teacut_test_##TEST_NAME ();								\
-	teacut_test_##TEST_NAME ();											\
-	teacut_printResult("Test", #TEST_NAME , teacut_data.testErrors);	\
-	teacut_setTest(NULL);												\
-	void teacut_test_##TEST_NAME ()
+#define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
+#define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
+
+#endif // TEACUT_H
 
 //-------------------------------------------------------
 
@@ -332,6 +324,8 @@ int factorial(int x)
 
 int main()
 {
+	EXPECT(0+0 EQ 1+1);
+
 	TEST_SUITE(factorial)
 	{
 		TEST(zero)
@@ -339,10 +333,7 @@ int main()
 			ASSERT(factorial(0) EQ 1);
 		}
 
-		TEST(expectation)
-		{
-			EXPECT(factorial(3) EQ -1);
-		}
+		EXPECT(factorial(3) EQ -1);
 
 		TEST(positiveNumbers)
 		{
