@@ -15,6 +15,7 @@ extern "C" {
 
 #define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
 #define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
+#define TEACUT_MAGENTA(STR_LITERAL)		"\033[0;95m"			STR_LITERAL "\033[0m"
 #define TEACUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
 #define TEACUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
 
@@ -28,7 +29,7 @@ struct teacut_TestAndSuiteData
 	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
 	struct teacut_TestAndSuiteData* parent;
-};
+} teacut_globalData;
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -98,8 +99,6 @@ void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
 void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData*);
 
-extern struct teacut_TestAndSuiteData dummyParent;
-extern struct teacut_TestAndSuiteData teacut_globalData;
 extern struct teacut_TestAndSuiteData *const teacut_shadow;
 extern struct teacut_TestAndSuiteData *const teacut_dummy;
 extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
@@ -263,9 +262,9 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 			"in \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
 			finalTestName, __FILE__, expectation->line);
 
-	fprintf(stderr, TEACUT_CYAN("%s"), expectation->str_a);
+	fprintf(stderr, TEACUT_MAGENTA("%s"), expectation->str_a);
 	if (expectation->operation != TEACUT_NO_OP)
-		fprintf(stderr, TEACUT_CYAN(" %s %s"), expectation->str_operator, expectation->str_b);
+		fprintf(stderr, TEACUT_MAGENTA(" %s %s"), expectation->str_operator, expectation->str_b);
 	fprintf(stderr, " evaluated to " TEACUT_RED("%g"), expectation->a);
 	if (expectation->operation != TEACUT_NO_OP)
 		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
@@ -287,8 +286,6 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 
 	if ( ! passed)
 	{
-		teacut_globalData.expectationFails++;
-
 		if (data->testDefined || data->suiteDefined)
 			data->expectationFails++;
 
@@ -312,7 +309,6 @@ void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData* data)
 		data->parent->suiteFails		+= (int)data->parent->suiteDefined;
 	}
 
-	// Update recursively to all parent tests and suites
 	if (data->parent->testDefined || data->parent->suiteDefined)
 		teacut_updateParentTestOrSuite(data->parent);
 }

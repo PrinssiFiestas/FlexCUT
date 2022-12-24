@@ -1,4 +1,3 @@
-#define TEACUT_IMPLEMENTATION
 #include "teacut.h"
 
 int factorial(int x)
