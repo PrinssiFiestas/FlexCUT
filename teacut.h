@@ -1,6 +1,10 @@
 #ifndef TEACUT_H
 #define TEACUT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #ifdef __cplusplus
 #include <atomic>
@@ -16,8 +20,8 @@ void ASSERT(bool expression);
 // Prints failure message and returns 1 when expression is false
 int EXPECT(bool expression);
 
-#include <stdio.h>
-#include <stdlib.h>
+#define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
+#define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
 
 #define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
 #define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
@@ -29,16 +33,11 @@ struct teacut_TestAndSuiteData
 #ifdef __cplusplus
 	std::atomic<int> testFails, suiteFails, expectationFails;
 #else
-	atomic_int testFails, suiteFails, expectationFails;
+	_Atomic int testFails, suiteFails, expectationFails;
 #endif
 	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
 };
-
-struct teacut_TestAndSuiteData teacut_data = {};
-
-struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_data;
-struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_data;
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -68,50 +67,6 @@ enum teacut_BooleanOperators
 	TEACUT_OPS_LENGTH
 };
 
-#define EQ ,TEACUT_EQ,
-#define NE ,TEACUT_NE,
-#define GT ,TEACUT_GT,
-#define LT ,TEACUT_LT,
-#define GE ,TEACUT_GE,
-#define LE ,TEACUT_LE,
-
-//const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {"==", "!=", ">", "<", ">=", "<="};
-const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {
-#define X(DUMMY, OP) #OP,
-	OP_TABLE
-#undef X
-};
-
-// Boolean operations as a function
-// Allows macros EQ, NE, etc. to be used like operators
-bool teacut_compare(double a, int operation, double b)
-{
-	switch(operation)
-	{
-		case TEACUT_NO_OP:
-			return a;
-
-	#define X(OP_ENUM, OP) 		\
-		case TEACUT##OP_ENUM:	\
-			return a OP b;
-
-		OP_TABLE
-
-	#undef X
-
-	// Expands to
-	
-	/*	case TEACUT_EQ:
-			return a == b;
-		case TEACUT_NE:
-			return a != b;
-		// etc...
-	*/
-	}
-
-	return 0&&(a+b); // Gets rid of pointless compiler warnings
-}
-
 struct teacut_ExpectationData
 {
 	double a, b;
@@ -121,38 +76,29 @@ struct teacut_ExpectationData
 	bool isAssertion;
 };
 
-// SIIVOO TÄÄ YLÖS
+// Boolean operations as a function
+// Allows macros EQ, NE, etc. to be used like operators
+bool teacut_compare(double a, int operation, double b);
+
+#define EQ ,TEACUT_EQ,
+#define NE ,TEACUT_NE,
+#define GT ,TEACUT_GT,
+#define LT ,TEACUT_LT,
+#define GE ,TEACUT_GE,
+#define LE ,TEACUT_LE,
+
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
-void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
-							 struct teacut_TestAndSuiteData* data)
-{
-	const char* finalTestName = data->testDefined  ? data->testName  :
-								data->suiteDefined ? data->suiteName :
-								expectation->func;
+void teacut_printFailMessage(struct teacut_ExpectationData*, struct teacut_TestAndSuiteData*);
 
-	if (expectation->isAssertion)
-		fprintf(stderr, "\nAssertion ");
-	else
-		fprintf(stderr, "\nExpectation ");
-	fprintf(stderr,
-			"in \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
-			finalTestName, __FILE__, expectation->line);
+int teacut_assert(struct teacut_ExpectationData, struct teacut_TestAndSuiteData*);
 
-	fprintf(stderr, TEACUT_CYAN("%s"), expectation->str_a);
-	if (expectation->operation != TEACUT_NO_OP)
-		fprintf(stderr, TEACUT_CYAN(" %s %s"), expectation->str_operator, expectation->str_b);
-	fprintf(stderr, " evaluated to " TEACUT_RED("%g"), expectation->a);
-	if (expectation->operation != TEACUT_NO_OP)
-		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
-	fprintf(stderr, ".\n");
+void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
-	// MUISTA KORJAA
-/*	if (expectation->isAssertion && teacut_data.testDefined)
-		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
-	if (expectation->isAssertion && teacut_data.suiteDefined)
-		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);*/
-}
+extern struct teacut_TestAndSuiteData teacut_globalData;
+extern struct teacut_TestAndSuiteData *const teacut_shadow;
+extern struct teacut_TestAndSuiteData *const teacut_dummy;
+extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 
 #define TEACUT_DATA (teacut_shadow->testDefined || teacut_shadow->suiteDefined ?	\
 					 teacut_shadow : teacut_dummy)
@@ -233,6 +179,103 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 
 #define TEACUT_FAILURE 1
 
+#define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
+	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
+																					\
+	/*oisko täst hyötyy?*/															\
+	/*struct teacut_TestData* teacut_calling##TEST_OR_SUITE = &teacut_##TEST_OR_SUITE ;	*/\
+																					\
+	{																				\
+		struct teacut_TestAndSuiteData teacut_##TEST_OR_SUITE = 					\
+		{																			\
+			.TEST_OR_SUITE##Name = #NAME,											\
+			.TEST_OR_SUITE##Defined = true											\
+		};																			\
+		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
+		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
+	}																				\
+	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
+
+//*************************************************************************************
+//
+//		IMPLEMENTATIglobalDN
+//
+//*************************************************************************************
+
+#ifdef TEACUT_IMPLEMENTATION
+
+#include <stdio.h>
+#include <stdlib.h>
+
+struct teacut_TestAndSuiteData teacut_globalData = {};
+struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_globalData;
+struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_globalData;
+
+//const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {"==", "!=", ">", "<", ">=", "<="};
+const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {
+#define X(DUMMY, OP) #OP,
+	OP_TABLE
+#undef X
+};
+
+bool teacut_compare(double a, int operation, double b)
+{
+	switch(operation)
+	{
+		case TEACUT_NO_OP:
+			return a;
+
+	#define X(OP_ENUM, OP) 		\
+		case TEACUT##OP_ENUM:	\
+			return a OP b;
+
+		OP_TABLE
+
+	#undef X
+
+	// Expands to
+	
+	/*	case TEACUT_EQ:
+			return a == b;
+		case TEACUT_NE:
+			return a != b;
+		// etc...
+	*/
+	}
+
+	return 0&&(a+b); // Gets rid of pointless compiler warnings
+}
+
+void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
+							 struct teacut_TestAndSuiteData* data)
+{
+	const char* finalTestName = data->testDefined  ? data->testName  :
+								data->suiteDefined ? data->suiteName :
+								expectation->func;
+
+	if (expectation->isAssertion)
+		fprintf(stderr, "\nAssertion ");
+	else
+		fprintf(stderr, "\nExpectation ");
+	fprintf(stderr,
+			"in \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
+			finalTestName, __FILE__, expectation->line);
+
+	fprintf(stderr, TEACUT_CYAN("%s"), expectation->str_a);
+	if (expectation->operation != TEACUT_NO_OP)
+		fprintf(stderr, TEACUT_CYAN(" %s %s"), expectation->str_operator, expectation->str_b);
+	fprintf(stderr, " evaluated to " TEACUT_RED("%g"), expectation->a);
+	if (expectation->operation != TEACUT_NO_OP)
+		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
+	fprintf(stderr, ".\n");
+
+	// MUISTA KORJAA
+/*	if (expectation->isAssertion && teacut_data.testDefined)
+		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
+	if (expectation->isAssertion && teacut_data.suiteDefined)
+		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);*/
+}
+
 int teacut_assert(struct teacut_ExpectationData expectation,
 				  struct teacut_TestAndSuiteData* data)
 {
@@ -242,7 +285,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 
 	if ( ! passed)
 	{
-		teacut_data.expectationFails++; // muuta atomic
+		teacut_data.expectationFails++;
 
 		if (data->testDefined || data->suiteDefined)
 			data->expectationFails++;
@@ -261,7 +304,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 {
 	const char* testOrSuite = data->testDefined ? "Test" : "Suite";
-	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName; //
+	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName;
 
 	if ( ! data->expectationFails)
 	{
@@ -274,25 +317,11 @@ void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 	}
 }
 
-#define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
-	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
-																					\
-	/*oisko täst hyötyy?*/															\
-	/*struct teacut_TestData* teacut_calling##TEST_OR_SUITE = &teacut_##TEST_OR_SUITE ;	*/\
-																					\
-	{																				\
-		struct teacut_TestAndSuiteData teacut_##TEST_OR_SUITE = 					\
-		{																			\
-			.TEST_OR_SUITE##Name = #NAME,											\
-			.TEST_OR_SUITE##Defined = true											\
-		};																			\
-		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
-		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
-	}																				\
-	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
+#endif // TEACUT_IMPLEMENTATION
 
-#define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
-#define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // TEACUT_H
 

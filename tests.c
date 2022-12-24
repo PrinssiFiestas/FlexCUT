@@ -31,6 +31,24 @@ int main()
 		}
 	}
 
+	TEST_SUITE(nested)
+	{
+		TEST(first)
+		{
+			EXPECT(1 == 1);
+
+			TEST(first_inner)
+			{
+				EXPECT(0);
+			}
+		}
+		
+		TEST(second)
+		{
+			EXPECT(1 == 1);
+		}
+	}
+
 	return 0;
 }
 
