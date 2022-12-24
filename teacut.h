@@ -27,6 +27,7 @@ struct teacut_TestAndSuiteData
 #endif
 	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
+	struct teacut_TestAndSuiteData* parent;
 };
 
 #define OP_TABLE	\
@@ -71,8 +72,10 @@ struct teacut_ExpectationData
 void ASSERT(bool expression);
 
 // Returns 0 when expression is true
-// Prints failure message and returns 1 when expression is false
+// Prints failure message and returns TEACUT_FAILURE==1 when expression is false
 int EXPECT(bool expression);
+
+#define TEACUT_FAILURE 1
 
 // Boolean operations as a function
 // Allows macros EQ, NE, etc. to be used like operators
@@ -93,6 +96,9 @@ int teacut_assert(struct teacut_ExpectationData, struct teacut_TestAndSuiteData*
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
+void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData*);
+
+extern struct teacut_TestAndSuiteData dummyParent;
 extern struct teacut_TestAndSuiteData teacut_globalData;
 extern struct teacut_TestAndSuiteData *const teacut_shadow;
 extern struct teacut_TestAndSuiteData *const teacut_dummy;
@@ -175,28 +181,25 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 #define EXPECT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
 
-#define TEACUT_FAILURE 1
-
 #define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
 	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
-																					\
-	/*oisko täst hyötyy?*/															\
-	/*struct teacut_TestData* teacut_calling##TEST_OR_SUITE = &teacut_##TEST_OR_SUITE ;	*/\
-																					\
+	struct teacut_TestAndSuiteData* teacut_##TEST_OR_SUITE##_##NAME##Parent = teacut_shadow;	\
 	{																				\
 		struct teacut_TestAndSuiteData teacut_##TEST_OR_SUITE = 					\
 		{																			\
 			.TEST_OR_SUITE##Name = #NAME,											\
-			.TEST_OR_SUITE##Defined = true											\
+			.TEST_OR_SUITE##Defined = true,											\
+			.parent = teacut_##TEST_OR_SUITE##_##NAME##Parent						\
 		};																			\
 		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
+		teacut_updateParentTestOrSuite(&teacut_##TEST_OR_SUITE);					\
 		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
 	}																				\
 	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
 
 //*************************************************************************************
 //
-//		IMPLEMENTATIglobalDN
+//		IMPLEMENTATION
 //
 //*************************************************************************************
 
@@ -205,7 +208,8 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 #include <stdio.h>
 #include <stdlib.h>
 
-struct teacut_TestAndSuiteData teacut_globalData = {};
+struct teacut_TestAndSuiteData dummyParent = {};
+struct teacut_TestAndSuiteData teacut_globalData = {.parent = &dummyParent};
 struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_globalData;
 struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_globalData;
 
@@ -299,12 +303,26 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 	return 0;
 }
 
+void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData* data)
+{
+	if (data->expectationFails)
+	{
+		data->parent->expectationFails 	+= data->expectationFails;
+		data->parent->testFails 		+= (int)data->parent->testDefined;
+		data->parent->suiteFails		+= (int)data->parent->suiteDefined;
+	}
+
+	// Update recursively to all parent tests and suites
+	if (data->parent->testDefined || data->parent->suiteDefined)
+		teacut_updateParentTestOrSuite(data->parent);
+}
+
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 {
 	const char* testOrSuite = data->testDefined ? "Test" : "Suite";
 	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName;
 
-	if ( ! data->expectationFails)
+	if ( ! data->expectationFails && ! data->testFails && ! data->suiteFails)
 	{
 		printf("\n%s \"%s\" " TEACUT_GREEN("[PASSED]") " \n", testOrSuite, testOrSuiteName);
 	}

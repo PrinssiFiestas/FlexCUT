@@ -8,7 +8,7 @@ run:
 
 debug:
 	gcc tests.c -o build/tests -g
-	seer build/tests -s
+	seergdb -s build/tests
 
 clean:
 	rm -r build
