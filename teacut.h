@@ -2,23 +2,13 @@
 #define TEACUT_H
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdbool.h>
-#ifdef __cplusplus
 #include <atomic>
+extern "C" {
 #else
 #include <stdatomic.h>
 #endif
 
-// Does nothing when expression is true
-// Exits program and prints failure message when expression is false
-void ASSERT(bool expression);
-
-// Returns 0 when expression is true
-// Prints failure message and returns 1 when expression is false
-int EXPECT(bool expression);
+#include <stdbool.h>
 
 #define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
 #define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
@@ -75,6 +65,14 @@ struct teacut_ExpectationData
 	int line;
 	bool isAssertion;
 };
+
+// Does nothing when expression is true
+// Exits program and prints failure message when expression is false
+void ASSERT(bool expression);
+
+// Returns 0 when expression is true
+// Prints failure message and returns 1 when expression is false
+int EXPECT(bool expression);
 
 // Boolean operations as a function
 // Allows macros EQ, NE, etc. to be used like operators
@@ -285,7 +283,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 
 	if ( ! passed)
 	{
-		teacut_data.expectationFails++;
+		teacut_globalData.expectationFails++;
 
 		if (data->testDefined || data->suiteDefined)
 			data->expectationFails++;
