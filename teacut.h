@@ -18,7 +18,7 @@ extern "C" {
 
 // Use these macros to define test or suite functions.
 // Tests and suites have to be defined in function scope so they can be run automatically.
-// Tests or suites are optional: EXPECT() and ASSERT() can be used anywhere in your code.
+// Tests and suites are optional: EXPECT() and ASSERT() can be used anywhere in your code.
 // Tests and suites can be nested arbitrarily.
 #define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
 #define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
@@ -38,12 +38,14 @@ int main() // function scope required!
 
 #define TEACUT_FAILURE 1
 
-// Does nothing when expression is true
-// Exits program and prints failure message when expression is false
+// Does nothing when expression is true.
+// Exits program and prints failure message when expression is false.
+// Really a macro.
 void ASSERT(bool expression);
 
-// Returns 0 when expression is true
-// Prints failure message and returns TEACUT_FAILURE when expression is false
+// Returns 0 when expression is true.
+// Prints failure message and returns TEACUT_FAILURE when expression is false.
+// Really a macro.
 int EXPECT(bool expression);
 
 // 'Pseudo-operators' to be used in argument for ASSERT() or EXPECT().
@@ -60,7 +62,7 @@ int EXPECT(bool expression);
 //		END OF PUBLIC API
 //
 //		Structs, functions and macros below are not meant to be used by the user.
-//		However they are required for macros to work so here you go I guess.
+//		However, they are required for macros to work so here you go I guess.
 //
 //*************************************************************************************
 
@@ -73,9 +75,9 @@ int EXPECT(bool expression);
 struct teacut_TestAndSuiteData
 {
 #ifdef __cplusplus
-	std::atomic<int> testFails, suiteFails, expectationFails;
+	std::atomic<int> testFails, suiteFails, expectationFails/*includes assertion fails*/;
 #else
-	_Atomic int testFails, suiteFails, expectationFails;
+	_Atomic int testFails, suiteFails, expectationFails/*includes assertion fails*/;
 #endif
 	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
@@ -90,7 +92,7 @@ struct teacut_TestAndSuiteData
 	X(_GE, >=)		\
 	X(_LE, <=)		\
 
-enum teacut_BooleanOperators
+enum teacut_BooleanOperator
 {
 	TEACUT_NO_OP = -1,
 
@@ -114,14 +116,14 @@ struct teacut_ExpectationData
 {
 	double a, b;
 	const char *str_a, *str_b, *str_operator, *func;
-	enum teacut_BooleanOperators operation;
+	enum teacut_BooleanOperator operation;
 	int line;
 	bool isAssertion;
 };
 
 // Boolean operations as a function
 // Allows macros EQ, NE, etc. to be used like operators
-bool teacut_compare(double a, int operation, double b);
+bool teacut_compare(double expression_a, enum teacut_BooleanOperator, double expression_b);
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
@@ -134,11 +136,10 @@ void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 void teacut_addFailToParentAndGlobalDataWhenFailed(struct teacut_TestAndSuiteData*);
 
 extern struct teacut_TestAndSuiteData *const teacut_shadow;
-extern struct teacut_TestAndSuiteData *const teacut_dummy;
 extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 
 #define TEACUT_DATA_FOR_ASSERT (teacut_shadow->testDefined || teacut_shadow->suiteDefined ? \
-								teacut_shadow : teacut_dummy)
+								teacut_shadow : &teacut_globalData)
 
 #define TEACUT_ASSERT(ASS) 					\
 	teacut_assert							\
@@ -214,8 +215,6 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 #define EXPECT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
 
-#define TEACUT_ANY_FAILS(TEST_OR_SUITE)
-
 #define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
 	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
 	struct teacut_TestAndSuiteData* teacut_##TEST_OR_SUITE##_##NAME##Parent = teacut_shadow;\
@@ -282,6 +281,7 @@ bool teacut_compare(double a, int operation, double b)
 	return 0&&(a+b); // Gets rid of pointless compiler warnings
 }
 
+// Finds suite by going trough all parent data
 struct teacut_TestAndSuiteData* findSuite(struct teacut_TestAndSuiteData* data)
 {
 	bool suiteFound 	= data->suiteDefined;
@@ -296,7 +296,7 @@ struct teacut_TestAndSuiteData* findSuite(struct teacut_TestAndSuiteData* data)
 }
 
 void teacut_printExpectationFail(struct teacut_ExpectationData* expectation,
-							 struct teacut_TestAndSuiteData* data)
+								 struct teacut_TestAndSuiteData* data)
 {
 	const char* finalTestName = data->testDefined  ? data->testName  :
 								data->suiteDefined ? data->suiteName :
@@ -326,6 +326,7 @@ void teacut_printExpectationFail(struct teacut_ExpectationData* expectation,
 		teacut_printTestOrSuiteResult(suite);
 }
 
+// Adds one fail to all parents all the way to teacut_globalData
 void teacut_addExpectationFail(struct teacut_TestAndSuiteData* data)
 {
 	data->expectationFails++;
