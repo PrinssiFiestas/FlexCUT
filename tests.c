@@ -50,7 +50,24 @@ int main()
 		}
 	}
 
+	TEST(suiteInTest)
+	{
+		TEST_SUITE(suite)
+		{
+			TEST(right)
+			{
+				ASSERT(1 + 1 EQ 2);
+			}
+			TEST(wrong)
+			{
+				EXPECT(1 + 1 NE 2);
+			}
+		}
+	}
+
 	printf("total expectation fails: %i\n", teacut_globalData.expectationFails);
+	printf("total test fails: %i\n", teacut_globalData.testFails);
+	printf("total suite fails: %i\n", teacut_globalData.suiteFails);
 	return 0;
 }
 

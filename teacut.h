@@ -97,14 +97,14 @@ int teacut_assert(struct teacut_ExpectationData, struct teacut_TestAndSuiteData*
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
-void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData*, int newFails);
+void teacut_addFailToParentAndGlobalDataWhenFailed(struct teacut_TestAndSuiteData*);
 
 extern struct teacut_TestAndSuiteData *const teacut_shadow;
 extern struct teacut_TestAndSuiteData *const teacut_dummy;
 extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 
-#define TEACUT_DATA (teacut_shadow->testDefined || teacut_shadow->suiteDefined ?	\
-					 teacut_shadow : teacut_dummy)
+#define TEACUT_DATA_FOR_ASSERT (teacut_shadow->testDefined || teacut_shadow->suiteDefined ? \
+								teacut_shadow : teacut_dummy)
 
 #define TEACUT_ASSERT(ASS) 					\
 	teacut_assert							\
@@ -118,7 +118,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.isAssertion 	= true,			\
 			.func			= __func__		\
 		},									\
-		TEACUT_DATA							\
+		TEACUT_DATA_FOR_ASSERT				\
 	)
 
 #define TEACUT_ASSERT_CMP(A, OP, B) 					\
@@ -136,7 +136,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.isAssertion	= true,						\
 			.func			= __func__					\
 		},												\
-		TEACUT_DATA										\
+		TEACUT_DATA_FOR_ASSERT							\
 	)
 
 #define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
@@ -155,7 +155,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.isAssertion 	= false,		\
 			.func			= __func__		\
 		},									\
-		TEACUT_DATA							\
+		TEACUT_DATA_FOR_ASSERT				\
 	)
 
 #define TEACUT_EXPECT_CMP(A, OP, B) 					\
@@ -173,12 +173,14 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.isAssertion  	= false,					\
 			.func			= __func__					\
 		},												\
-		TEACUT_DATA										\
+		TEACUT_DATA_FOR_ASSERT							\
 	)
 
 #define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
 #define EXPECT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
+
+#define TEACUT_ANY_FAILS(TEST_OR_SUITE)
 
 #define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
 	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
@@ -191,11 +193,11 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.parent = teacut_##TEST_OR_SUITE##_##NAME##Parent						\
 		};																			\
 		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
-		teacut_updateParentTestOrSuite(&teacut_##TEST_OR_SUITE,						\
-									   teacut_##TEST_OR_SUITE.expectationFails);	\
+		teacut_addFailToParentAndGlobalDataWhenFailed(&teacut_##TEST_OR_SUITE);		\
 		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
 	}																				\
 	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
+
 
 //*************************************************************************************
 //
@@ -292,7 +294,6 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 								 expectation.b);
 	if ( ! passed)
 	{
-	//	data->expectationFails++;
 		teacut_addExpectationFail(data);
 		teacut_printFailMessage(&expectation, data);
 		if(expectation.isAssertion)
@@ -302,24 +303,21 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 	}
 	return 0;
 }
-
-void teacut_updateParentTestOrSuite(struct teacut_TestAndSuiteData* data, int newFails)
+void teacut_addFailToParentAndGlobalDataWhenFailed(struct teacut_TestAndSuiteData* data)
 {
-	if ( ! newFails) // tarviiks?
+	bool anyFails = data->expectationFails || data->testFails || data->suiteFails;
+	if (anyFails && data->testDefined)
 	{
-		return;
+		data->parent->testFails++;
+		if (data->parent != &teacut_globalData)
+			teacut_globalData.testFails++;
 	}
-	//if (data->expectationFails)
-	else
+	if (anyFails && data->suiteDefined)
 	{
-		//printf("newFails: %i, data.fails: %i\n", newFails, data->expectationFails);
-		//data->parent->expectationFails 	+= newFails;
-		data->parent->testFails 		+= (int)data->parent->testDefined;
-		data->parent->suiteFails		+= (int)data->parent->suiteDefined;
+		data->parent->suiteFails++;
+		if (data->parent != &teacut_globalData)
+			teacut_globalData.suiteFails++;
 	}
-
-	if (data->parent->testDefined || data->parent->suiteDefined)
-		teacut_updateParentTestOrSuite(data->parent, newFails);
 }
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
@@ -336,6 +334,10 @@ void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 		fprintf(stderr, "\n%s \"%s\" " TEACUT_RED("[FAILED]") " \n",
 				testOrSuite, testOrSuiteName);
 	}
+
+	// FHGJDSALHFJDSKALHFJDS
+	printf("testFails: %i\n", data->testFails);
+	printf("suiteFails: %i\n", data->suiteFails);
 }
 
 #endif // TEACUT_IMPLEMENTATION
