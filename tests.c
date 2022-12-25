@@ -1,3 +1,5 @@
+#include <stdio.h> // for debugging
+
 #include "teacut.h"
 
 int factorial(int x)
@@ -48,6 +50,7 @@ int main()
 		}
 	}
 
+	printf("total expectation fails: %i\n", teacut_globalData.expectationFails);
 	return 0;
 }
 
