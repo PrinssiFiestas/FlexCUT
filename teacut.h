@@ -249,6 +249,19 @@ bool teacut_compare(double a, int operation, double b)
 	return 0&&(a+b); // Gets rid of pointless compiler warnings
 }
 
+struct teacut_TestAndSuiteData* findSuite(struct teacut_TestAndSuiteData* data)
+{
+	bool suiteFound 	= data->suiteDefined;
+	bool suiteNotFound	= data== &teacut_globalData;
+
+	if (suiteFound)
+		return data;
+	else if (suiteNotFound)
+		return NULL;
+	else // keep looking
+		return findSuite(data->parent);
+}
+
 void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 							 struct teacut_TestAndSuiteData* data)
 {
@@ -272,11 +285,11 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 		fprintf(stderr, TEACUT_RED(" %s %g"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
 
-	// MUISTA KORJAA
-/*	if (expectation->isAssertion && teacut_data.testDefined)
-		teacut_printResult("Test", teacut_data.testName, teacut_data.testErrors);
-	if (expectation->isAssertion && teacut_data.suiteDefined)
-		teacut_printResult("Suite", teacut_data.suiteName, teacut_data.suiteErrors);*/
+	if (expectation->isAssertion && data->testDefined)
+		teacut_printTestOrSuiteResult(data);
+	struct teacut_TestAndSuiteData* suite = findSuite(data);
+	if (suite != NULL)
+		teacut_printTestOrSuiteResult(suite);
 }
 
 void teacut_addExpectationFail(struct teacut_TestAndSuiteData* data)
@@ -334,10 +347,6 @@ void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData* data)
 		fprintf(stderr, "\n%s \"%s\" " TEACUT_RED("[FAILED]") " \n",
 				testOrSuite, testOrSuiteName);
 	}
-
-	// FHGJDSALHFJDSKALHFJDS
-	printf("testFails: %i\n", data->testFails);
-	printf("suiteFails: %i\n", data->suiteFails);
 }
 
 #endif // TEACUT_IMPLEMENTATION

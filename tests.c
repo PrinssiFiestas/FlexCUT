@@ -65,6 +65,23 @@ int main()
 		}
 	}
 
+//#define ASSERT_TEST
+#ifdef  ASSERT_TEST
+	TEST(assert)
+	{
+		TEST_SUITE(assertSuite)
+		{
+			TEST(notYetTheActualTest)
+			{
+				TEST(actualAssertTest)
+				{
+					ASSERT(factorial(3) LE 0 - 1);
+				}
+			}
+		}
+	}
+#endif // ASSERT_TEST
+
 	printf("total expectation fails: %i\n", teacut_globalData.expectationFails);
 	printf("total test fails: %i\n", teacut_globalData.testFails);
 	printf("total suite fails: %i\n", teacut_globalData.suiteFails);
