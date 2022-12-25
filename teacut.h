@@ -10,8 +10,59 @@ extern "C" {
 
 #include <stdbool.h>
 
+//*************************************************************************************
+//
+//		PUBLIC API
+//
+//*************************************************************************************
+
+// Use these macros to define test or suite functions.
+// Tests and suites have to be defined in function scope so they can be run automatically.
+// Tests or suites are optional: EXPECT() and ASSERT() can be used anywhere in your code.
+// Tests and suites can be nested arbitrarily.
 #define TEST(NAME)			TEACUT_TEST_OR_SUITE(NAME,test)
 #define TEST_SUITE(NAME)	TEACUT_TEST_OR_SUITE(NAME,suite)
+// Example use:
+/*
+int main() // function scope required!
+{
+	TEST_SUITE(exampleSuite) // optional suite
+	{
+		TEST(exampleTest) // optional test
+		{
+			ASSERT(1 + 1 EQ 2);
+		}
+	}
+}
+*/
+
+#define TEACUT_FAILURE 1
+
+// Does nothing when expression is true
+// Exits program and prints failure message when expression is false
+void ASSERT(bool expression);
+
+// Returns 0 when expression is true
+// Prints failure message and returns TEACUT_FAILURE when expression is false
+int EXPECT(bool expression);
+
+// 'Pseudo-operators' to be used in argument for ASSERT() or EXPECT().
+// Use ASSERT(A EQ B) instead of ASSERT(A == B) for more info at failure!
+#define EQ ,TEACUT_EQ,
+#define NE ,TEACUT_NE,
+#define GT ,TEACUT_GT,
+#define LT ,TEACUT_LT,
+#define GE ,TEACUT_GE,
+#define LE ,TEACUT_LE,
+
+//*************************************************************************************
+//
+//		END OF PUBLIC API
+//
+//		Structs, functions and macros below are not meant to be used by the user.
+//		However they are required for macros to work so here you go I guess.
+//
+//*************************************************************************************
 
 #define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
 #define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
@@ -68,30 +119,13 @@ struct teacut_ExpectationData
 	bool isAssertion;
 };
 
-// Does nothing when expression is true
-// Exits program and prints failure message when expression is false
-void ASSERT(bool expression);
-
-// Returns 0 when expression is true
-// Prints failure message and returns TEACUT_FAILURE==1 when expression is false
-int EXPECT(bool expression);
-
-#define TEACUT_FAILURE 1
-
 // Boolean operations as a function
 // Allows macros EQ, NE, etc. to be used like operators
 bool teacut_compare(double a, int operation, double b);
 
-#define EQ ,TEACUT_EQ,
-#define NE ,TEACUT_NE,
-#define GT ,TEACUT_GT,
-#define LT ,TEACUT_LT,
-#define GE ,TEACUT_GE,
-#define LE ,TEACUT_LE,
-
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
-void teacut_printFailMessage(struct teacut_ExpectationData*, struct teacut_TestAndSuiteData*);
+void teacut_printExpectationFail(struct teacut_ExpectationData*, struct teacut_TestAndSuiteData*);
 
 int teacut_assert(struct teacut_ExpectationData, struct teacut_TestAndSuiteData*);
 
@@ -198,10 +232,9 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 	}																				\
 	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
 
-
 //*************************************************************************************
 //
-//		IMPLEMENTATION
+// 		IMPLEMENTATION
 //
 //*************************************************************************************
 
@@ -262,7 +295,7 @@ struct teacut_TestAndSuiteData* findSuite(struct teacut_TestAndSuiteData* data)
 		return findSuite(data->parent);
 }
 
-void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
+void teacut_printExpectationFail(struct teacut_ExpectationData* expectation,
 							 struct teacut_TestAndSuiteData* data)
 {
 	const char* finalTestName = data->testDefined  ? data->testName  :
@@ -273,6 +306,7 @@ void teacut_printFailMessage(struct teacut_ExpectationData* expectation,
 		fprintf(stderr, "\nAssertion ");
 	else
 		fprintf(stderr, "\nExpectation ");
+			teacut_globalData.testFails += (data->parent != &teacut_globalData);
 	fprintf(stderr,
 			"in \"%s\" " TEACUT_RED("[FAILED]") " in %s " TEACUT_WHITE_BG("line %i") "\n", 
 			finalTestName, __FILE__, expectation->line);
@@ -308,7 +342,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 	if ( ! passed)
 	{
 		teacut_addExpectationFail(data);
-		teacut_printFailMessage(&expectation, data);
+		teacut_printExpectationFail(&expectation, data);
 		if(expectation.isAssertion)
 			exit(EXIT_FAILURE);
 		else 
