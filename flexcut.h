@@ -30,6 +30,8 @@
 //		BEFORE including it as shown in the example below. Settings should also be 
 //		defined similarly. 
 //
+//		Details on usage can be found in PUBLIC API section.
+//
 //		SETTINGS
 //
 //		// Use this flag if your terminal does not color escape sequences
@@ -126,7 +128,9 @@ struct fcut_TestAndSuiteData
 	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
 	ATOMIC(int) testCount, suiteCount, expectationCount;
 	const char *testName, *suiteName;
-	const bool testDefined, suiteDefined;
+	// testDefined has 'test' written in all lowercase which is used by macros
+	const union {bool isTest;  bool testDefined;};
+	const union {bool isSuite; bool suiteDefined;};
 	struct fcut_TestAndSuiteData* parent;
 };
 extern struct fcut_TestAndSuiteData fcut_globalData;
@@ -191,45 +195,10 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
 #define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
 
-#define FCUT_DATA_FOR_ASSERT (fcut_shadow->testDefined || fcut_shadow->suiteDefined ? \
+#define FCUT_DATA_FOR_ASSERT (fcut_shadow->isTest || fcut_shadow->isSuite ? \
 								fcut_shadow : &fcut_globalData)
 
-#define FCUT_ASSERT(ASS) 								\
-	fcut_assert											\
-	(													\
-		(struct fcut_ExpectationData)					\
-		{												\
-			.a 			 	= ASS,						\
-			.str_a		 	= #ASS,						\
-			.operation	 	= FCUT_NO_OP,				\
-			.isAssertion 	= true,						\
-			FCUT_COMMON_DATA							\
-		},												\
-		FCUT_DATA_FOR_ASSERT							\
-	)
-
-#define FCUT_ASSERT_CMP(A, OP, B) 						\
-	fcut_assert											\
-	(													\
-	 	(struct fcut_ExpectationData)					\
-		{												\
-			.a 	   			= A,						\
-			.b 				= B,						\
-			.str_a 			= #A,						\
-			.str_b 			= #B,						\
-			.str_operator 	= FCUT_STR_OPERATORS[OP],	\
-			.operation		= OP,						\
-			.isAssertion	= true,						\
-			FCUT_COMMON_DATA							\
-		},												\
-		FCUT_DATA_FOR_ASSERT							\
-	)
-
-#define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
-#define ASSERT(...)		\
-	GET_MACRO_NAME(__VA_ARGS__, FCUT_ASSERT_CMP, DUMMY, FCUT_ASSERT)(__VA_ARGS__)
-
-#define FCUT_EXPECT(EXP) 								\
+#define FCUT_EXPECT(EXP, IS_ASS) 						\
 	fcut_assert											\
 	(													\
 		(struct fcut_ExpectationData)					\
@@ -237,13 +206,13 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.a 			 	= EXP,						\
 			.str_a		 	= #EXP,						\
 			.operation	 	= FCUT_NO_OP,				\
-			.isAssertion 	= false,					\
+			.isAssertion 	= IS_ASS,					\
 			FCUT_COMMON_DATA							\
 		},												\
 		FCUT_DATA_FOR_ASSERT							\
 	)
 
-#define FCUT_EXPECT_CMP(A, OP, B) 						\
+#define FCUT_EXPECT_CMP(A, OP, B, IS_ASS)				\
 	fcut_assert											\
 	(													\
 	 	(struct fcut_ExpectationData)					\
@@ -254,15 +223,23 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.str_b 		  	= #B,						\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],	\
 			.operation	  	= OP,						\
-			.isAssertion  	= false,					\
+			.isAssertion  	= IS_ASS,					\
 			FCUT_COMMON_DATA							\
 		},												\
 		FCUT_DATA_FOR_ASSERT							\
 	)
 
-#define GET_MACRO_NAME(DUMMY1, DUMMY2, SUMMY3, NAME, ...) NAME
+#define FCUT_NOT_ASS 0
+#define FCUT_IS_ASS  1
+
+// For overloading EXPECT() and ASSERT() on number of arguments
+#define GET_MACRO_NAME(DUMMY1, DUMMY2, DUMMY3, NAME, ...) NAME
+
 #define EXPECT(...)		\
-	GET_MACRO_NAME(__VA_ARGS__, FCUT_EXPECT_CMP, DUMMY, FCUT_EXPECT)(__VA_ARGS__)
+	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_NOT_ASS)
+	
+#define ASSERT(...)		\
+	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_IS_ASS)
 
 #define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
 	fcut_printStartingMessageAndInitExitMessage();										\
@@ -319,13 +296,21 @@ struct fcut_TestAndSuiteData *const fcut_shadow = &fcut_globalData;
 	else																	\
 		printf(FCUT_GREEN("%i failed")"\n", fcut_globalData. DATA##Fails);
 
-void fcut_printExitMessage()
+bool fcut_anyFails(struct fcut_TestAndSuiteData* data)
+{
+	return data->expectationFails || data->testFails || data->suiteFails;
+}
+
+void fcut_printExitMessageAndAddExitStatus()
 {
 	printf("\n");
 
 	PRINT_DATA(expectation);
 	PRINT_DATA(test);
 	PRINT_DATA(suite);
+
+	if (fcut_anyFails(&fcut_globalData))
+		exit(FCUT_FAILURE);
 }
 
 #undef PRINT_DATA
@@ -336,7 +321,7 @@ void fcut_printStartingMessageAndInitExitMessage()
 	if ( ! initialized)
 	{
 		printf("\n\tStarting tests...\n");
-		atexit(fcut_printExitMessage);
+		atexit(fcut_printExitMessageAndAddExitStatus);
 		initialized = true;
 	}
 }
@@ -379,8 +364,8 @@ bool fcut_compare(double a, int operation, double b)
 // Finds suite by going trough all parent data
 struct fcut_TestAndSuiteData* findSuite(struct fcut_TestAndSuiteData* data)
 {
-	bool suiteFound 	= data->suiteDefined;
-	bool suiteNotFound	= data== &fcut_globalData;
+	bool suiteFound 	= data->isSuite;
+	bool suiteNotFound	= data == &fcut_globalData;
 
 	if (suiteFound)
 		return data;
@@ -393,8 +378,8 @@ struct fcut_TestAndSuiteData* findSuite(struct fcut_TestAndSuiteData* data)
 void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 								 struct fcut_TestAndSuiteData* data)
 {
-	const char* finalTestName = data->testDefined  ? data->testName  :
-								data->suiteDefined ? data->suiteName :
+	const char* finalTestName = data->isTest  ? data->testName  :
+								data->isSuite ? data->suiteName :
 								expectation->func;
 
 	if (expectation->isAssertion)
@@ -414,7 +399,7 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 		fprintf(stderr, FCUT_RED(" %s %g"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
 
-	if (expectation->isAssertion && data->testDefined)
+	if (expectation->isAssertion && data->isTest)
 		fcut_printTestOrSuiteResult(data);
 	struct fcut_TestAndSuiteData* suite = findSuite(data);
 	if (suite != NULL)
@@ -449,14 +434,14 @@ int fcut_assert(struct fcut_ExpectationData expectation,
 }
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData* data)
 {
-	bool anyFails = data->expectationFails || data->testFails || data->suiteFails;
-	if (anyFails && data->testDefined)
+	bool anyFails = fcut_anyFails(data);
+	if (anyFails && data->isTest)
 	{
 		data->parent->testFails++;
 		if (data->parent != &fcut_globalData)
 			fcut_globalData.testFails++;
 	}
-	if (anyFails && data->suiteDefined)
+	if (anyFails && data->isSuite)
 	{
 		data->parent->suiteFails++;
 		if (data->parent != &fcut_globalData)
@@ -466,8 +451,8 @@ void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteDa
 
 void fcut_printTestOrSuiteResult(struct fcut_TestAndSuiteData* data)
 {
-	const char* testOrSuite = data->testDefined ? "Test" : "Suite";
-	const char* testOrSuiteName = data->testDefined ? data->testName : data->suiteName;
+	const char* testOrSuite = data->isTest ? "Test" : "Suite";
+	const char* testOrSuiteName = data->isTest ? data->testName : data->suiteName;
 
 	if ( ! data->expectationFails && ! data->testFails && ! data->suiteFails)
 	{
