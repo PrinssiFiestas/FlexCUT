@@ -1,3 +1,3 @@
-## Tiny Expect & Assert C Unit Test
+## FlexCUT
 
-Minimalist unit testing framewrk with no external dependecies written in C. 
+Flexible C/C++ Unit Testing framework for easy unit testing without any dependencies. 

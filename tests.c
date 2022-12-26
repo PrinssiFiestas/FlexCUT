@@ -1,6 +1,4 @@
-#include <stdio.h> // for debugging
-
-#include "teacut.h"
+#include "flexcut.h"
 
 int factorial(int x)
 {
