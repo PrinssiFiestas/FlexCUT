@@ -145,7 +145,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 								fcut_shadow : &fcut_globalData)
 
 #define FCUT_ASSERT(ASS) 					\
-	fcut_assert							\
+	fcut_assert								\
 	(										\
 		(struct fcut_ExpectationData)		\
 		{									\
@@ -159,8 +159,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 		FCUT_DATA_FOR_ASSERT				\
 	)
 
-#define FCUT_ASSERT_CMP(A, OP, B) 					\
-	fcut_assert										\
+#define FCUT_ASSERT_CMP(A, OP, B) 						\
+	fcut_assert											\
 	(													\
 	 	(struct fcut_ExpectationData)					\
 		{												\
@@ -182,7 +182,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	GET_MACRO_NAME(__VA_ARGS__, FCUT_ASSERT_CMP, DUMMY, FCUT_ASSERT)(__VA_ARGS__)
 
 #define FCUT_EXPECT(EXP) 					\
-	fcut_assert							\
+	fcut_assert								\
 	(										\
 		(struct fcut_ExpectationData)		\
 		{									\
@@ -196,8 +196,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 		FCUT_DATA_FOR_ASSERT				\
 	)
 
-#define FCUT_EXPECT_CMP(A, OP, B) 					\
-	fcut_assert										\
+#define FCUT_EXPECT_CMP(A, OP, B) 						\
+	fcut_assert											\
 	(													\
 	 	(struct fcut_ExpectationData)					\
 		{												\
@@ -218,22 +218,22 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 #define EXPECT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, FCUT_EXPECT_CMP, DUMMY, FCUT_EXPECT)(__VA_ARGS__)
 
-#define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
-	fcut_printStartingMessageAndInitExitMessage();								\
-	auto void fcut_##TEST_OR_SUITE##_##NAME (struct fcut_TestAndSuiteData*);	\
-	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##Parent = fcut_shadow;\
-	{																				\
-		struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE = 					\
-		{																			\
-			.TEST_OR_SUITE##Name = #NAME,											\
-			.TEST_OR_SUITE##Defined = true,											\
-			.parent = fcut_##TEST_OR_SUITE##_##NAME##Parent						\
-		};																			\
-		fcut_##TEST_OR_SUITE##_##NAME (&fcut_##TEST_OR_SUITE);					\
-		fcut_globalData. TEST_OR_SUITE##Count++;									\
-		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(&fcut_##TEST_OR_SUITE);\
-		fcut_printTestOrSuiteResult(&fcut_##TEST_OR_SUITE);						\
-	}																				\
+#define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
+	fcut_printStartingMessageAndInitExitMessage();										\
+	auto void fcut_##TEST_OR_SUITE##_##NAME (struct fcut_TestAndSuiteData*);			\
+	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##Parent = fcut_shadow;	\
+	{																					\
+		struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE = 							\
+		{																				\
+			.TEST_OR_SUITE##Name = #NAME,												\
+			.TEST_OR_SUITE##Defined = true,												\
+			.parent = fcut_##TEST_OR_SUITE##_##NAME##Parent								\
+		};																				\
+		fcut_##TEST_OR_SUITE##_##NAME (&fcut_##TEST_OR_SUITE);							\
+		fcut_globalData. TEST_OR_SUITE##Count++;										\
+		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(&fcut_##TEST_OR_SUITE);		\
+		fcut_printTestOrSuiteResult(&fcut_##TEST_OR_SUITE);								\
+	}																					\
 	void fcut_##TEST_OR_SUITE##_##NAME (struct fcut_TestAndSuiteData* fcut_shadow)
 
 //*************************************************************************************
@@ -257,30 +257,24 @@ struct fcut_TestAndSuiteData *const fcut_shadow = &fcut_globalData;
 #define FCUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
 #define FCUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
 
+#define PRINT_DATA(DATA)													\
+	printf("A total of "FCUT_CYAN("%i") " " #DATA "s completed, ",			\
+			fcut_globalData. DATA##Count );									\
+	if (fcut_globalData. DATA##Fails)										\
+		printf(FCUT_RED("%i failed")"\n", fcut_globalData. DATA##Fails);	\
+	else																	\
+		printf(FCUT_GREEN("%i failed")"\n", fcut_globalData. DATA##Fails);
+
 void fcut_printExitMessage()
 {
 	printf("\n");
 
-/*#define PRINT_DATA(DATA)																  \
-	if (fcut_globalData. DATA##Fails)													  \
-		printf("Total "#DATA" fails: "FCUT_RED("%i\n"), fcut_globalData. DATA##Fails);\
-	else																				  \
-		printf("Total "#DATA" fails: "FCUT_GREEN("%i\n"), fcut_globalData. DATA##Fails)*/
-
-#define PRINT_DATA(DATA)														\
-	printf("A total of "FCUT_CYAN("%i") " " #DATA "s completed, ",			\
-			fcut_globalData. DATA##Count );									\
-	if (fcut_globalData. DATA##Fails)											\
-		printf(FCUT_RED("%i failed")"\n", fcut_globalData. DATA##Fails);	\
-	else																		\
-		printf(FCUT_GREEN("%i failed")"\n", fcut_globalData. DATA##Fails);
-
 	PRINT_DATA(expectation);
 	PRINT_DATA(test);
 	PRINT_DATA(suite);
+}
 
 #undef PRINT_DATA
-}
 
 void fcut_printStartingMessageAndInitExitMessage()
 {
