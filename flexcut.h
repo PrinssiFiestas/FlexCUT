@@ -27,12 +27,23 @@
 //		USAGE OF THIS LIBRARY
 //
 //		To use this library define FLEXCUT_IMPLEMENTATION in EXACTLY ONE C/C++ file 
-//		BEFORE including it as shown in the example below. 
+//		BEFORE including it as shown in the example below. Settings should also be 
+//		defined similarly. 
+//
+//		SETTINGS
+//
+//		// Use this flag if your terminal does not color escape sequences
+//		#define FLEXCUT_DISABLE_COLOR
 //
 //*************************************************************************************
 /*
+
+// usage example
+
 #define FLEXCUT_IMPLEMENTATION
+// define settings here
 #include "flexcut.h"
+
 */
 
 #ifndef FLEXCUT_H
@@ -287,12 +298,20 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 struct fcut_TestAndSuiteData fcut_globalData = {};
 struct fcut_TestAndSuiteData *const fcut_shadow = &fcut_globalData;
 
+#ifndef FLEXCUT_DISABLE_COLOR
 // Appends desired color escape sequence in front and default color in back
-#define FCUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
+#define FCUT_RED(STR_LITERAL)		"\033[0;31m"			STR_LITERAL "\033[0m"
 #define FCUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
-#define FCUT_MAGENTA(STR_LITERAL)		"\033[0;95m"			STR_LITERAL "\033[0m"
+#define FCUT_MAGENTA(STR_LITERAL)	"\033[0;95m"			STR_LITERAL "\033[0m"
 #define FCUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
 #define FCUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
+#else
+#define FCUT_RED(STR_LITERAL)		STR_LITERAL
+#define FCUT_GREEN(STR_LITERAL)		STR_LITERAL
+#define FCUT_MAGENTA(STR_LITERAL)	STR_LITERAL
+#define FCUT_CYAN(STR_LITERAL)		STR_LITERAL
+#define FCUT_WHITE_BG(STR_LITERAL)	STR_LITERAL
+#endif // FLEXCUT_DISABLE_COLOR
 
 #define PRINT_DATA(DATA)													\
 	printf("A total of "FCUT_CYAN("%i") " " #DATA "s completed, ",			\
