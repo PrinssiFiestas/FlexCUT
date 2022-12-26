@@ -164,7 +164,7 @@ enum fcut_BooleanOperator
 struct fcut_ExpectationData
 {
 	const double a, b;
-	const char *str_a, *str_b, *str_operator, *func;
+	const char *str_a, *str_b, *str_operator, *func, *file;
 	const enum fcut_BooleanOperator operation;
 	const int line;
 	const bool isAssertion;
@@ -189,22 +189,23 @@ void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteDa
 extern struct fcut_TestAndSuiteData *const fcut_shadow;
 extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
+#define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
+
 #define FCUT_DATA_FOR_ASSERT (fcut_shadow->testDefined || fcut_shadow->suiteDefined ? \
 								fcut_shadow : &fcut_globalData)
 
-#define FCUT_ASSERT(ASS) 					\
-	fcut_assert								\
-	(										\
-		(struct fcut_ExpectationData)		\
-		{									\
-			.a 			 	= ASS,			\
-			.str_a		 	= #ASS,			\
-			.operation	 	= FCUT_NO_OP,	\
-			.line 		 	= __LINE__,		\
-			.isAssertion 	= true,			\
-			.func			= __func__		\
-		},									\
-		FCUT_DATA_FOR_ASSERT				\
+#define FCUT_ASSERT(ASS) 								\
+	fcut_assert											\
+	(													\
+		(struct fcut_ExpectationData)					\
+		{												\
+			.a 			 	= ASS,						\
+			.str_a		 	= #ASS,						\
+			.operation	 	= FCUT_NO_OP,				\
+			.isAssertion 	= true,						\
+			FCUT_COMMON_DATA							\
+		},												\
+		FCUT_DATA_FOR_ASSERT							\
 	)
 
 #define FCUT_ASSERT_CMP(A, OP, B) 						\
@@ -218,9 +219,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.str_b 			= #B,						\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],	\
 			.operation		= OP,						\
-			.line 			= __LINE__,					\
 			.isAssertion	= true,						\
-			.func			= __func__					\
+			FCUT_COMMON_DATA							\
 		},												\
 		FCUT_DATA_FOR_ASSERT							\
 	)
@@ -229,19 +229,18 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 #define ASSERT(...)		\
 	GET_MACRO_NAME(__VA_ARGS__, FCUT_ASSERT_CMP, DUMMY, FCUT_ASSERT)(__VA_ARGS__)
 
-#define FCUT_EXPECT(EXP) 					\
-	fcut_assert								\
-	(										\
-		(struct fcut_ExpectationData)		\
-		{									\
-			.a 			 	= EXP,			\
-			.str_a		 	= #EXP,			\
-			.operation	 	= FCUT_NO_OP,	\
-			.line 		 	= __LINE__,		\
-			.isAssertion 	= false,		\
-			.func			= __func__		\
-		},									\
-		FCUT_DATA_FOR_ASSERT				\
+#define FCUT_EXPECT(EXP) 								\
+	fcut_assert											\
+	(													\
+		(struct fcut_ExpectationData)					\
+		{												\
+			.a 			 	= EXP,						\
+			.str_a		 	= #EXP,						\
+			.operation	 	= FCUT_NO_OP,				\
+			.isAssertion 	= false,					\
+			FCUT_COMMON_DATA							\
+		},												\
+		FCUT_DATA_FOR_ASSERT							\
 	)
 
 #define FCUT_EXPECT_CMP(A, OP, B) 						\
@@ -255,9 +254,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.str_b 		  	= #B,						\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],	\
 			.operation	  	= OP,						\
-			.line 		  	= __LINE__,					\
 			.isAssertion  	= false,					\
-			.func			= __func__					\
+			FCUT_COMMON_DATA							\
 		},												\
 		FCUT_DATA_FOR_ASSERT							\
 	)
@@ -405,8 +403,8 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 		fprintf(stderr, "\nExpectation ");
 			fcut_globalData.testFails += (data->parent != &fcut_globalData);
 	fprintf(stderr,
-			"in \"%s\" " FCUT_RED("[FAILED]") " in %s " FCUT_WHITE_BG("line %i") "\n", 
-			finalTestName, __FILE__, expectation->line);
+			"in \"%s\" " FCUT_RED("[FAILED]") " in \"%s\" " FCUT_WHITE_BG("line %i") "\n", 
+			finalTestName, expectation->file, expectation->line);
 
 	fprintf(stderr, FCUT_MAGENTA("%s"), expectation->str_a);
 	if (expectation->operation != FCUT_NO_OP)
