@@ -12,6 +12,9 @@ int factorial(int x)
 
 int main()
 {
+
+//#define PASSING_TESTS
+#ifndef PASSING_TESTS
 	EXPECT(0+0 EQ 1+1);
 
 	TEST_SUITE(factorial)
@@ -64,6 +67,20 @@ int main()
 			}
 		}
 	}
+#else // PASSING_TESTS
+	TEST_SUITE(passingSuite)
+	{
+		TEST(passingTest0)
+		{
+			ASSERT(true);
+		}
+
+		TEST(passingTest1)
+		{
+			ASSERT(-1 LT 0);
+		}
+	}
+#endif // PASSING_TESTS
 
 //#define ASSERT_TEST
 #ifdef  ASSERT_TEST
@@ -82,9 +99,6 @@ int main()
 	}
 #endif // ASSERT_TEST
 
-	printf("total expectation fails: %i\n", teacut_globalData.expectationFails);
-	printf("total test fails: %i\n", teacut_globalData.testFails);
-	printf("total suite fails: %i\n", teacut_globalData.suiteFails);
 	return 0;
 }
 

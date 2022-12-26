@@ -50,12 +50,12 @@ int EXPECT(bool expression);
 
 // 'Pseudo-operators' to be used in argument for ASSERT() or EXPECT().
 // Use ASSERT(A EQ B) instead of ASSERT(A == B) for more info at failure!
-#define EQ ,TEACUT_EQ,
-#define NE ,TEACUT_NE,
-#define GT ,TEACUT_GT,
-#define LT ,TEACUT_LT,
-#define GE ,TEACUT_GE,
-#define LE ,TEACUT_LE,
+#define EQ ,TEACUT_EQ, // ==
+#define NE ,TEACUT_NE, // !=
+#define GT ,TEACUT_GT, // >
+#define LT ,TEACUT_LT, // <
+#define GE ,TEACUT_GE, // >=
+#define LE ,TEACUT_LE, // <=
 
 //*************************************************************************************
 //
@@ -72,17 +72,21 @@ int EXPECT(bool expression);
 #define TEACUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
 #define TEACUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
 
+#ifdef __cplusplus
+#define ATOMIC(T) std::atomic<T>
+#else
+#define ATOMIC(T) _Atomic T
+#endif
+
 struct teacut_TestAndSuiteData
 {
-#ifdef __cplusplus
-	std::atomic<int> testFails, suiteFails, expectationFails/*includes assertion fails*/;
-#else
-	_Atomic int testFails, suiteFails, expectationFails/*includes assertion fails*/;
-#endif
+	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
 	char *testName, *suiteName;
 	bool testDefined, suiteDefined;
 	struct teacut_TestAndSuiteData* parent;
 } teacut_globalData;
+
+#undef ATOMIC
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -124,6 +128,8 @@ struct teacut_ExpectationData
 // Boolean operations as a function
 // Allows macros EQ, NE, etc. to be used like operators
 bool teacut_compare(double expression_a, enum teacut_BooleanOperator, double expression_b);
+
+void teacut_printStartingMessageAndInitExitMessage();
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
@@ -216,6 +222,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 	GET_MACRO_NAME(__VA_ARGS__, TEACUT_EXPECT_CMP, DUMMY, TEACUT_EXPECT)(__VA_ARGS__)
 
 #define TEACUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)									\
+	teacut_printStartingMessageAndInitExitMessage();								\
 	auto void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData*);	\
 	struct teacut_TestAndSuiteData* teacut_##TEST_OR_SUITE##_##NAME##Parent = teacut_shadow;\
 	{																				\
@@ -241,10 +248,38 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 struct teacut_TestAndSuiteData teacut_globalData = {};
 struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_globalData;
-struct teacut_TestAndSuiteData *const teacut_dummy  = &teacut_globalData;
+
+void teacut_printExitMessage()
+{
+	printf("\n");
+
+#define PRINT_DATA(DATA)																  \
+	if (teacut_globalData. DATA##Fails)													  \
+		printf("Total "#DATA" fails: "TEACUT_RED("%i\n"), teacut_globalData. DATA##Fails);\
+	else																				  \
+		printf("Total "#DATA" fails: "TEACUT_GREEN("%i\n"), teacut_globalData. DATA##Fails)
+
+	PRINT_DATA(expectation);
+	PRINT_DATA(test);
+	PRINT_DATA(suite);
+
+#undef PRINT_DATA
+}
+
+void teacut_printStartingMessageAndInitExitMessage()
+{
+	static bool initialized = false;
+	if ( ! initialized)
+	{
+		printf("\n\tStarting tests...\n");
+		atexit(teacut_printExitMessage);
+		initialized = true;
+	}
+}
 
 //const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {"==", "!=", ">", "<", ">=", "<="};
 const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3] = {
