@@ -34,7 +34,7 @@
 //
 //		SETTINGS
 //
-//		// Use this flag if your terminal does not color escape sequences
+//		// Use this flag if your terminal does not support color escape sequences
 //		#define FLEXCUT_DISABLE_COLOR
 //
 //*************************************************************************************
@@ -296,7 +296,7 @@ struct fcut_TestAndSuiteData *const fcut_shadow = &fcut_globalData;
 #endif // FLEXCUT_DISABLE_COLOR
 
 #define PRINT_DATA(DATA)													\
-	printf("A total of "FCUT_CYAN("%i") " " #DATA "s completed, ",			\
+	printf("A total of " FCUT_CYAN("%i") " " #DATA "s completed, ",			\
 			fcut_globalData. DATA##Count );									\
 	if (fcut_globalData. DATA##Fails)										\
 		printf(FCUT_RED("%i failed")"\n", fcut_globalData. DATA##Fails);	\
