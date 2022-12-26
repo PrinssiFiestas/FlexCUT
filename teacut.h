@@ -66,25 +66,22 @@ int EXPECT(bool expression);
 //
 //*************************************************************************************
 
-#define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
-#define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
-#define TEACUT_MAGENTA(STR_LITERAL)		"\033[0;95m"			STR_LITERAL "\033[0m"
-#define TEACUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
-#define TEACUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
-
 #ifdef __cplusplus
 #define ATOMIC(T) std::atomic<T>
 #else
 #define ATOMIC(T) _Atomic T
 #endif
 
+// teacut_globalData is not hidden so users can read data if they so will. 
+// Users may also create custom test functions that adds fails to teacut_globalData.
 struct teacut_TestAndSuiteData
 {
 	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
-	char *testName, *suiteName;
-	bool testDefined, suiteDefined;
+	const char *testName, *suiteName;
+	const bool testDefined, suiteDefined;
 	struct teacut_TestAndSuiteData* parent;
-} teacut_globalData;
+};
+extern struct teacut_TestAndSuiteData teacut_globalData;
 
 #undef ATOMIC
 
@@ -118,11 +115,11 @@ enum teacut_BooleanOperator
 
 struct teacut_ExpectationData
 {
-	double a, b;
+	const double a, b;
 	const char *str_a, *str_b, *str_operator, *func;
-	enum teacut_BooleanOperator operation;
-	int line;
-	bool isAssertion;
+	const enum teacut_BooleanOperator operation;
+	const int line;
+	const bool isAssertion;
 };
 
 // Boolean operations as a function
@@ -139,7 +136,7 @@ int teacut_assert(struct teacut_ExpectationData, struct teacut_TestAndSuiteData*
 
 void teacut_printTestOrSuiteResult(struct teacut_TestAndSuiteData*);
 
-void teacut_addFailToParentAndGlobalDataWhenFailed(struct teacut_TestAndSuiteData*);
+void teacut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct teacut_TestAndSuiteData*);
 
 extern struct teacut_TestAndSuiteData *const teacut_shadow;
 extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
@@ -233,7 +230,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.parent = teacut_##TEST_OR_SUITE##_##NAME##Parent						\
 		};																			\
 		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
-		teacut_addFailToParentAndGlobalDataWhenFailed(&teacut_##TEST_OR_SUITE);		\
+		teacut_addTestOrSuiteFailToParentAndGlobalIfFailed(&teacut_##TEST_OR_SUITE);\
 		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
 	}																				\
 	void teacut_##TEST_OR_SUITE##_##NAME (struct teacut_TestAndSuiteData* teacut_shadow)
@@ -252,6 +249,13 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 
 struct teacut_TestAndSuiteData teacut_globalData = {};
 struct teacut_TestAndSuiteData *const teacut_shadow = &teacut_globalData;
+
+// Appends desired color escape sequence in front and default color in back
+#define TEACUT_RED(STR_LITERAL)			"\033[0;31m"			STR_LITERAL "\033[0m"
+#define TEACUT_GREEN(STR_LITERAL)		"\033[0;92m"			STR_LITERAL "\033[0m"
+#define TEACUT_MAGENTA(STR_LITERAL)		"\033[0;95m"			STR_LITERAL "\033[0m"
+#define TEACUT_CYAN(STR_LITERAL)		"\033[0;96m"			STR_LITERAL "\033[0m"
+#define TEACUT_WHITE_BG(STR_LITERAL)	"\033[0;107m\033[30m"	STR_LITERAL "\033[0m"
 
 void teacut_printExitMessage()
 {
@@ -386,7 +390,7 @@ int teacut_assert(struct teacut_ExpectationData expectation,
 	}
 	return 0;
 }
-void teacut_addFailToParentAndGlobalDataWhenFailed(struct teacut_TestAndSuiteData* data)
+void teacut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct teacut_TestAndSuiteData* data)
 {
 	bool anyFails = data->expectationFails || data->testFails || data->suiteFails;
 	if (anyFails && data->testDefined)
