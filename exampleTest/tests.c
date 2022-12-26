@@ -1,4 +1,4 @@
-#include "flexcut.h"
+#include "../flexcut.h"
 
 int factorial(int x)
 {
