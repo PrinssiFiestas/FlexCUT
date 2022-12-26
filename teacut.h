@@ -40,6 +40,7 @@ int main() // function scope required!
 
 // Does nothing when expression is true.
 // Exits program and prints failure message when expression is false.
+// Assertions are counted as expectations.
 // Really a macro.
 void ASSERT(bool expression);
 
@@ -72,11 +73,10 @@ int EXPECT(bool expression);
 #define ATOMIC(T) _Atomic T
 #endif
 
-// teacut_globalData is not hidden so users can read data if they so will. 
-// Users may also create custom test functions that adds fails to teacut_globalData.
 struct teacut_TestAndSuiteData
 {
 	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
+	ATOMIC(int) testCount, suiteCount, expectationCount;
 	const char *testName, *suiteName;
 	const bool testDefined, suiteDefined;
 	struct teacut_TestAndSuiteData* parent;
@@ -230,6 +230,7 @@ extern const char TEACUT_STR_OPERATORS[TEACUT_OPS_LENGTH][3];
 			.parent = teacut_##TEST_OR_SUITE##_##NAME##Parent						\
 		};																			\
 		teacut_##TEST_OR_SUITE##_##NAME (&teacut_##TEST_OR_SUITE);					\
+		teacut_globalData. TEST_OR_SUITE##Count++;									\
 		teacut_addTestOrSuiteFailToParentAndGlobalIfFailed(&teacut_##TEST_OR_SUITE);\
 		teacut_printTestOrSuiteResult(&teacut_##TEST_OR_SUITE);						\
 	}																				\
@@ -261,11 +262,19 @@ void teacut_printExitMessage()
 {
 	printf("\n");
 
-#define PRINT_DATA(DATA)																  \
+/*#define PRINT_DATA(DATA)																  \
 	if (teacut_globalData. DATA##Fails)													  \
 		printf("Total "#DATA" fails: "TEACUT_RED("%i\n"), teacut_globalData. DATA##Fails);\
 	else																				  \
-		printf("Total "#DATA" fails: "TEACUT_GREEN("%i\n"), teacut_globalData. DATA##Fails)
+		printf("Total "#DATA" fails: "TEACUT_GREEN("%i\n"), teacut_globalData. DATA##Fails)*/
+
+#define PRINT_DATA(DATA)														\
+	printf("A total of "TEACUT_CYAN("%i") " " #DATA "s completed, ",			\
+			teacut_globalData. DATA##Count );									\
+	if (teacut_globalData. DATA##Fails)											\
+		printf(TEACUT_RED("%i failed")"\n", teacut_globalData. DATA##Fails);	\
+	else																		\
+		printf(TEACUT_GREEN("%i failed")"\n", teacut_globalData. DATA##Fails);
 
 	PRINT_DATA(expectation);
 	PRINT_DATA(test);
@@ -376,6 +385,7 @@ void teacut_addExpectationFail(struct teacut_TestAndSuiteData* data)
 int teacut_assert(struct teacut_ExpectationData expectation,
 				  struct teacut_TestAndSuiteData* data)
 {
+	teacut_globalData.expectationCount++;
 	bool passed = teacut_compare(expectation.a,
 								 expectation.operation,
 								 expectation.b);
