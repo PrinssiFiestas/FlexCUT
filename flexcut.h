@@ -192,7 +192,7 @@ void fcut_printTestOrSuiteResult(struct fcut_TestAndSuiteData*);
 
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData*);
 
-extern struct fcut_TestAndSuiteData *const fcut_shadow;
+extern struct fcut_TestAndSuiteData *const fcut_shadow/* = &fcut_globalData */;
 extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
 #define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
@@ -244,17 +244,29 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_IS_ASS)
 
 #define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
-	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##__LINE__##Parent =		\
-		fcut_shadow;																	\
-	bool fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan = false;						\
-	for(struct fcut_TestAndSuiteData* fcut_shadow = &(struct fcut_TestAndSuiteData)		\
-		{																				\
-			.TEST_OR_SUITE##Name = #NAME,												\
-			.TEST_OR_SUITE##Defined = true,												\
-			.parent = fcut_##TEST_OR_SUITE##_##NAME##__LINE__##Parent					\
-		};(fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan =							\
-			fcut_updateTestOrSuiteData(fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan,	\
-				fcut_shadow));)
+	/* fcut_shadow = &fcut_globalData if no parent test or suite is defined */			\
+	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##Parent = fcut_shadow;	\
+																						\
+	struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE##_##NAME =						\
+	{																					\
+		.TEST_OR_SUITE##Name = #NAME,													\
+		.TEST_OR_SUITE##Defined = true,													\
+		.parent = fcut_##TEST_OR_SUITE##_##NAME##Parent									\
+	};																					\
+																						\
+	/* Gets updated to true by fcut_updateTestOrSuiteData */							\
+	/* This allows for-loop code to be run only once */									\
+	bool fcut_##TEST_OR_SUITE##_##NAME##HasRan = false;									\
+																						\
+	/* Confusing for-loop statements. Read with care! */								\
+	/* Shadowing happens in initialization statement. Then fcut_updateTestOrSuiteData */\
+	/* gets called in test expression. Initially it	returns true and allows test or	  */\
+	/* suite code to be run once. After test or suite code has been run, it gets run  */\
+	/* again to do the actual updating. Then it returns false. 						  */\
+	for(struct fcut_TestAndSuiteData* fcut_shadow = &fcut_##TEST_OR_SUITE##_##NAME;		\
+		(fcut_##TEST_OR_SUITE##_##NAME##HasRan =										\
+			fcut_updateTestOrSuiteData(fcut_##TEST_OR_SUITE##_##NAME##HasRan,			\
+				fcut_shadow));) // { user defined test or suite code for for-loop }
 
 //*************************************************************************************
 //
