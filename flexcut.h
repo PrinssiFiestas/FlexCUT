@@ -186,6 +186,8 @@ void fcut_printExpectationFail(struct fcut_ExpectationData*, struct fcut_TestAnd
 
 int fcut_assert(struct fcut_ExpectationData, struct fcut_TestAndSuiteData*);
 
+bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuiteData*);
+
 void fcut_printTestOrSuiteResult(struct fcut_TestAndSuiteData*);
 
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData*);
@@ -242,29 +244,17 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_IS_ASS)
 
 #define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
-	fcut_printStartingMessageAndInitExitMessage();/*but only for the first time*/		\
-																						\
-	/* forward declaration of user defined function */									\
-	auto void fcut_##TEST_OR_SUITE##_##NAME (struct fcut_TestAndSuiteData*);			\
-																						\
-	/* fcut_shadow is &fcut_globalData if parent test or suite is not defined */		\
-	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##Parent = fcut_shadow;	\
-	{																					\
-		struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE = 							\
+	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##__LINE__##Parent =		\
+		fcut_shadow;																	\
+	bool fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan = false;						\
+	for(struct fcut_TestAndSuiteData* fcut_shadow = &(struct fcut_TestAndSuiteData)		\
 		{																				\
 			.TEST_OR_SUITE##Name = #NAME,												\
 			.TEST_OR_SUITE##Defined = true,												\
-			.parent = fcut_##TEST_OR_SUITE##_##NAME##Parent								\
-		};																				\
-		/* run user defined test or suite */											\
-		fcut_##TEST_OR_SUITE##_##NAME (&fcut_##TEST_OR_SUITE);							\
-																						\
-		fcut_globalData. TEST_OR_SUITE##Count++;										\
-		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(&fcut_##TEST_OR_SUITE);		\
-		fcut_printTestOrSuiteResult(&fcut_##TEST_OR_SUITE);								\
-	}																					\
-	/* User defined function. Note shadowing for fcut_shadow !! */						\
-	void fcut_##TEST_OR_SUITE##_##NAME (struct fcut_TestAndSuiteData* fcut_shadow)
+			.parent = fcut_##TEST_OR_SUITE##_##NAME##__LINE__##Parent					\
+		};(fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan =							\
+			fcut_updateTestOrSuiteData(fcut_##TEST_OR_SUITE##_##NAME##__LINE__##hasRan,	\
+				fcut_shadow));)
 
 //*************************************************************************************
 //
@@ -439,6 +429,25 @@ int fcut_assert(struct fcut_ExpectationData expectation,
 	}
 	return 0;
 }
+
+bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuiteData* data)
+{
+	if ( ! testOrSuiteHasRan)
+	{
+		fcut_printStartingMessageAndInitExitMessage();
+	}
+	else
+	{
+		if (data->isTest)
+			fcut_globalData.testCount++;
+		else
+			fcut_globalData.suiteCount++;
+		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(data);
+		fcut_printTestOrSuiteResult(data);
+	}
+	return ! testOrSuiteHasRan;
+}
+
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData* data)
 {
 	bool anyFails = fcut_anyFails(data);
