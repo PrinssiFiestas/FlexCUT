@@ -393,7 +393,7 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 		fprintf(stderr, "\nAssertion ");
 	else
 		fprintf(stderr, "\nExpectation ");
-			fcut_globalData.testFails += (data->parent != &fcut_globalData);
+
 	fprintf(stderr,
 			"in \"%s\" " FCUT_RED("[FAILED]") " in \"%s\" " FCUT_WHITE_BG("line %i") "\n", 
 			finalTestName, expectation->file, expectation->line);
@@ -406,11 +406,14 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 		fprintf(stderr, FCUT_RED(" %s %g"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
 
-	if (expectation->isAssertion && data->isTest)
-		fcut_printTestOrSuiteResult(data);
-	struct fcut_TestAndSuiteData* suite = findSuite(data);
-	if (suite != NULL)
-		fcut_printTestOrSuiteResult(suite);
+	if (expectation->isAssertion) // print test and suite results early before exiting
+	{
+		if (data->isTest)
+			fcut_printTestOrSuiteResult(data);
+		struct fcut_TestAndSuiteData* suite = findSuite(data);
+		if (suite != NULL)
+			fcut_printTestOrSuiteResult(suite);
+	}
 }
 
 // Adds one fail to all parents all the way to fcut_globalData
@@ -452,6 +455,7 @@ bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuite
 			fcut_globalData.testCount++;
 		else
 			fcut_globalData.suiteCount++;
+
 		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(data);
 		fcut_printTestOrSuiteResult(data);
 	}
