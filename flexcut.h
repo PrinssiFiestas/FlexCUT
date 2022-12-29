@@ -244,14 +244,12 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_IS_ASS)
 
 #define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
-	/* fcut_shadow = &fcut_globalData if no parent test or suite is defined */			\
-	struct fcut_TestAndSuiteData* fcut_##TEST_OR_SUITE##_##NAME##Parent = fcut_shadow;	\
-																						\
 	struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE##_##NAME =						\
 	{																					\
 		.TEST_OR_SUITE##Name = #NAME,													\
 		.TEST_OR_SUITE##Defined = true,													\
-		.parent = fcut_##TEST_OR_SUITE##_##NAME##Parent									\
+		/* fcut_shadow = &fcut_globalData if no parent test or suite is defined */		\
+		.parent = fcut_shadow															\
 	};																					\
 																						\
 	/* Gets updated to true by fcut_updateTestOrSuiteData */							\
