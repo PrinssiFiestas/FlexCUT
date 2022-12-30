@@ -92,12 +92,12 @@ int main() // function scope required!
 // Exits program and prints failure message when expression is false.
 // Assertions are counted as expectations.
 // Really a macro.
-void ASSERT(bool expression);
+void ASSERT(bool expression, const char* additionalFailMessage/* = NULL*/);
 
 // Returns 0 when expression is true.
 // Prints failure message and returns FCUT_FAILURE when expression is false.
 // Really a macro.
-int EXPECT(bool expression);
+int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 
 // 'Pseudo-operators' to be used in argument for ASSERT() or EXPECT().
 // Use ASSERT(A EQ B) instead of ASSERT(A == B) for more info at failure!
@@ -169,7 +169,7 @@ enum fcut_BooleanOperator
 struct fcut_ExpectationData
 {
 	const double a, b;
-	const char *str_a, *str_b, *str_operator, *func, *file;
+	const char *str_a, *str_b, *str_operator, *func, *file, *additionalFailMessage;
 	const enum fcut_BooleanOperator operation;
 	const int line;
 	const bool isAssertion;
@@ -199,48 +199,63 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
 #define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
 
-#define FCUT_EXPECT(EXP, IS_ASS) 						\
-	fcut_assert											\
-	(													\
-		(struct fcut_ExpectationData)					\
-		{												\
-			.a 			 	= EXP,						\
-			.str_a		 	= #EXP,						\
-			.operation	 	= FCUT_NO_OP,				\
-			.isAssertion 	= IS_ASS,					\
-			FCUT_COMMON_DATA							\
-		},												\
-		fcut_currentTestOrSuite							\
+#define FCUT_EXPECT(EXP, ADDITIONAL_MSG, IS_ASS)			\
+	fcut_assert												\
+	(														\
+		(struct fcut_ExpectationData)						\
+		{													\
+			.a 			 	= EXP,							\
+			.str_a		 	= #EXP,							\
+			.operation	 	= FCUT_NO_OP,					\
+			.isAssertion 	= IS_ASS,						\
+			.additionalFailMessage = ADDITIONAL_MSG,		\
+			FCUT_COMMON_DATA								\
+		},													\
+		fcut_currentTestOrSuite								\
 	)
 
-#define FCUT_EXPECT_CMP(A, OP, B, IS_ASS)				\
-	fcut_assert											\
-	(													\
-	 	(struct fcut_ExpectationData)					\
-		{												\
-			.a 	   		  	= A,						\
-			.b 			  	= B,						\
-			.str_a 		  	= #A,						\
-			.str_b 		  	= #B,						\
-			.str_operator 	= FCUT_STR_OPERATORS[OP],	\
-			.operation	  	= OP,						\
-			.isAssertion  	= IS_ASS,					\
-			FCUT_COMMON_DATA							\
-		},												\
-		fcut_currentTestOrSuite							\
+#define FCUT_EXPECT_CMP(A, OP, B, ADDITIONAL_MSG, IS_ASS)	\
+	fcut_assert												\
+	(														\
+	 	(struct fcut_ExpectationData)						\
+		{													\
+			.a 	   		  	= A,							\
+			.b 			  	= B,							\
+			.str_a 		  	= #A,							\
+			.str_b 		  	= #B,							\
+			.str_operator 	= FCUT_STR_OPERATORS[OP],		\
+			.operation	  	= OP,							\
+			.isAssertion  	= IS_ASS,						\
+			.additionalFailMessage = ADDITIONAL_MSG,		\
+			FCUT_COMMON_DATA								\
+		},													\
+		fcut_currentTestOrSuite								\
 	)
 
 #define FCUT_NOT_ASS 0
 #define FCUT_IS_ASS  1
 
-// For overloading EXPECT() and ASSERT() on number of arguments
-#define GET_MACRO_NAME(DUMMY1, DUMMY2, DUMMY3, NAME, ...) NAME
+#define FCUT_EXPECT_WITH_MSG(EXP, MSG, IS_ASS)			FCUT_EXPECT(EXP, MSG, IS_ASS)
+#define FCUT_EXPECT_WOUT_MSG(EXP, IS_ASS)				FCUT_EXPECT(EXP, NULL, IS_ASS)
+#define FCUT_EXPECT_CMP_WITH_MSG(A, OP, B, MSG, IS_ASS) FCUT_EXPECT_CMP(A, OP, B, MSG, IS_ASS)
+#define FCUT_EXPECT_CMP_WOUT_MSG(A, OP, B, IS_ASS)		FCUT_EXPECT_CMP(A, OP, B, NULL,IS_ASS)
 
-#define EXPECT(...)		\
-	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_NOT_ASS)
-	
-#define ASSERT(...)		\
-	GET_MACRO_NAME(__VA_ARGS__,FCUT_EXPECT_CMP,DUMMY,FCUT_EXPECT)(__VA_ARGS__,FCUT_IS_ASS)
+// For overloading EXPECT() and ASSERT() on number of arguments
+#define FCUT_GET_MACRO_NAME(DUMMY1, DUMMY2, DUMMY3, DUMMY4, NAME, ...) NAME
+
+#define EXPECT(...)									\
+	FCUT_GET_MACRO_NAME(__VA_ARGS__,				\
+						FCUT_EXPECT_CMP_WITH_MSG,	\
+						FCUT_EXPECT_CMP_WOUT_MSG,	\
+						FCUT_EXPECT_WITH_MSG,		\
+						FCUT_EXPECT_WOUT_MSG,)	(__VA_ARGS__,FCUT_NOT_ASS)
+
+#define ASSERT(...)									\
+	FCUT_GET_MACRO_NAME(__VA_ARGS__,				\
+						FCUT_EXPECT_CMP_WITH_MSG,	\
+						FCUT_EXPECT_CMP_WOUT_MSG,	\
+						FCUT_EXPECT_WITH_MSG,		\
+						FCUT_EXPECT_WOUT_MSG,)	(__VA_ARGS__,FCUT_IS_ASS)
 
 #define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
 	struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE##_##NAME =						\
@@ -396,6 +411,9 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 	if (expectation->operation != FCUT_NO_OP)
 		fprintf(stderr, FCUT_RED(" %s %g"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
+
+	if (expectation->additionalFailMessage != NULL)
+		printf("%s\n", expectation->additionalFailMessage);
 
 	if (expectation->isAssertion) // print test and suite results early before exiting
 	{

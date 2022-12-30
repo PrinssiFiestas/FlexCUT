@@ -13,7 +13,7 @@ int main()
 
 //#define PASSING_TESTS
 #ifndef PASSING_TESTS
-	EXPECT(0+0 EQ 1+1);
+	EXPECT(0+0 EQ 1+1, "Example fail message");
 
 	TEST_SUITE(factorial)
 	{
@@ -41,7 +41,7 @@ int main()
 
 			TEST(first_inner)
 			{
-				EXPECT(0);
+				EXPECT(0, "Another example fail message");
 			}
 		}
 		
