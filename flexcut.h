@@ -125,12 +125,13 @@ int EXPECT(bool expression);
 
 struct fcut_TestAndSuiteData
 {
+	const char *testName, *suiteName;
 	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
 	ATOMIC(int) testCount, suiteCount, expectationCount;
-	const char *testName, *suiteName;
-	// testDefined has 'test' written in all lowercase which is used by macros
+	// testDefined has 'test' written in lowercase which is necessary for FCUT_TEST_OR_SUITE()
 	const union {bool isTest;  bool testDefined;};
 	const union {bool isSuite; bool suiteDefined;};
+	bool testOrSuiteRunning;
 	struct fcut_TestAndSuiteData* parent;
 };
 extern struct fcut_TestAndSuiteData fcut_globalData;
@@ -186,19 +187,17 @@ void fcut_printExpectationFail(struct fcut_ExpectationData*, struct fcut_TestAnd
 
 int fcut_assert(struct fcut_ExpectationData, struct fcut_TestAndSuiteData*);
 
-bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuiteData*);
+bool fcut_testOrSuiteRunning(struct fcut_TestAndSuiteData*);
 
 void fcut_printTestOrSuiteResult(struct fcut_TestAndSuiteData*);
 
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData*);
 
-extern struct fcut_TestAndSuiteData *const fcut_shadow/* = &fcut_globalData */;
+extern struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite;
+
 extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
 #define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
-
-#define FCUT_DATA_FOR_ASSERT (fcut_shadow->isTest || fcut_shadow->isSuite ? \
-								fcut_shadow : &fcut_globalData)
 
 #define FCUT_EXPECT(EXP, IS_ASS) 						\
 	fcut_assert											\
@@ -211,7 +210,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.isAssertion 	= IS_ASS,					\
 			FCUT_COMMON_DATA							\
 		},												\
-		FCUT_DATA_FOR_ASSERT							\
+		fcut_currentTestOrSuite							\
 	)
 
 #define FCUT_EXPECT_CMP(A, OP, B, IS_ASS)				\
@@ -228,7 +227,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 			.isAssertion  	= IS_ASS,					\
 			FCUT_COMMON_DATA							\
 		},												\
-		FCUT_DATA_FOR_ASSERT							\
+		fcut_currentTestOrSuite							\
 	)
 
 #define FCUT_NOT_ASS 0
@@ -248,23 +247,15 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	{																					\
 		.TEST_OR_SUITE##Name = #NAME,													\
 		.TEST_OR_SUITE##Defined = true,													\
-		/* fcut_shadow = &fcut_globalData if no parent test or suite is defined */		\
-		.parent = fcut_shadow															\
+		.parent = fcut_currentTestOrSuite												\
 	};																					\
 																						\
-	/* Gets updated to true by fcut_updateTestOrSuiteData */							\
-	/* This allows for-loop code to be run only once */									\
-	bool fcut_##TEST_OR_SUITE##_##NAME##HasRan = false;									\
-																						\
-	/* Confusing for-loop statements. Read with care! */								\
-	/* Shadowing happens in initialization statement. Then fcut_updateTestOrSuiteData */\
-	/* gets called in test expression. Initially it	returns true and allows test or	  */\
-	/* suite code to be run once. After test or suite code has been run, it gets run  */\
-	/* again to do the actual updating. Then it returns false. 						  */\
-	for(struct fcut_TestAndSuiteData* fcut_shadow = &fcut_##TEST_OR_SUITE##_##NAME;		\
-		(fcut_##TEST_OR_SUITE##_##NAME##HasRan =										\
-			fcut_updateTestOrSuiteData(fcut_##TEST_OR_SUITE##_##NAME##HasRan,			\
-				fcut_shadow));) // { user defined test or suite code for for-loop }
+	for(struct fcut_TestAndSuiteData* fcut_currentTestOrSuite = &fcut_##TEST_OR_SUITE##_##NAME;\
+		fcut_testOrSuiteRunning(fcut_currentTestOrSuite);)
+/*	{
+		// user defined test or suite code for for-loop
+	}
+*/
 
 //*************************************************************************************
 //
@@ -278,7 +269,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 #include <stdlib.h>
 
 struct fcut_TestAndSuiteData fcut_globalData = {};
-struct fcut_TestAndSuiteData *const fcut_shadow = &fcut_globalData;
+struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite = &fcut_globalData;
 
 #ifndef FLEXCUT_DISABLE_COLOR
 // Appends desired color escape sequence in front and default color in back
@@ -443,8 +434,10 @@ int fcut_assert(struct fcut_ExpectationData expectation,
 	return 0;
 }
 
-bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuiteData* data)
+bool fcut_testOrSuiteRunning(struct fcut_TestAndSuiteData* data)
 {
+	bool testOrSuiteHasRan = data->testOrSuiteRunning;
+
 	if ( ! testOrSuiteHasRan)
 	{
 		fcut_printStartingMessageAndInitExitMessage();
@@ -459,7 +452,8 @@ bool fcut_updateTestOrSuiteData(bool testOrSuiteHasRan, struct fcut_TestAndSuite
 		fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(data);
 		fcut_printTestOrSuiteResult(data);
 	}
-	return ! testOrSuiteHasRan;
+
+	return data->testOrSuiteRunning = ! testOrSuiteHasRan;
 }
 
 void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteData* data)
