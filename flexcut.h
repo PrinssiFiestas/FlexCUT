@@ -117,26 +117,25 @@ int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 //
 //*************************************************************************************
 
-#ifdef __cplusplus
-#define ATOMIC(T) std::atomic<T>
+#if defined(_MSC_VER)
+#define FCUT_ATOMIC(T) T // MSVC does not support atomics at the time of writing
+#elif defined(__cplusplus)
+#define FCUT_ATOMIC(T) std::atomic<T>
 #else
-#define ATOMIC(T) _Atomic T
+#define FCUT_ATOMIC(T) _Atomic T
 #endif
 
 struct fcut_TestAndSuiteData
 {
 	const char *testName, *suiteName;
-	ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
-	ATOMIC(int) testCount, suiteCount, expectationCount;
-	// testDefined has 'test' written in lowercase which is necessary for FCUT_TEST_OR_SUITE()
+	FCUT_ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
+	FCUT_ATOMIC(int) testCount, suiteCount, expectationCount;
 	const union {bool isTest;  bool testDefined;};
 	const union {bool isSuite; bool suiteDefined;};
 	bool testOrSuiteRunning;
 	struct fcut_TestAndSuiteData* parent;
 };
 extern struct fcut_TestAndSuiteData fcut_globalData;
-
-#undef ATOMIC
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
