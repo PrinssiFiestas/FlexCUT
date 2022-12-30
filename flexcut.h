@@ -66,7 +66,7 @@ extern "C" {
 //
 //*************************************************************************************
 
-// Use these macros to define test or suite functions.
+// Use these macros to define tests and suites.
 // Tests and suites have to be defined in function scope so they can be run automatically.
 // Tests and suites are optional: EXPECT() and ASSERT() can be used anywhere in your code.
 // Tests and suites can be nested arbitrarily.
@@ -253,7 +253,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	for(struct fcut_TestAndSuiteData* fcut_currentTestOrSuite = &fcut_##TEST_OR_SUITE##_##NAME;\
 		fcut_testOrSuiteRunning(fcut_currentTestOrSuite);)
 /*	{
-		// user defined test or suite code for for-loop
+		// user defined test or suite code
 	}
 */
 
@@ -286,6 +286,11 @@ struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite = &fcut_globalData;
 #define FCUT_WHITE_BG(STR_LITERAL)	STR_LITERAL
 #endif // FLEXCUT_DISABLE_COLOR
 
+bool fcut_anyFails(struct fcut_TestAndSuiteData* data)
+{
+	return data->expectationFails || data->testFails || data->suiteFails;
+}
+
 #define PRINT_DATA(DATA)													\
 	printf("A total of " FCUT_CYAN("%i") " " #DATA "s completed, ",			\
 			fcut_globalData. DATA##Count );									\
@@ -293,11 +298,6 @@ struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite = &fcut_globalData;
 		printf(FCUT_RED("%i failed")"\n", fcut_globalData. DATA##Fails);	\
 	else																	\
 		printf(FCUT_GREEN("%i failed")"\n", fcut_globalData. DATA##Fails);
-
-bool fcut_anyFails(struct fcut_TestAndSuiteData* data)
-{
-	return data->expectationFails || data->testFails || data->suiteFails;
-}
 
 void fcut_printExitMessageAndAddExitStatus()
 {
