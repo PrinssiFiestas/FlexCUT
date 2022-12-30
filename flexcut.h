@@ -58,6 +58,7 @@ extern "C" {
 #include <stdatomic.h>
 #endif
 
+#include <stddef.h>
 #include <stdbool.h>
 
 //*************************************************************************************
@@ -117,12 +118,19 @@ int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 //
 //*************************************************************************************
 
-#if defined(_MSC_VER)
+/*#if defined(_MSC_VER)
 #define FCUT_ATOMIC(T) T // MSVC does not support atomics at the time of writing
 #elif defined(__cplusplus)
 #define FCUT_ATOMIC(T) std::atomic<T>
+//#define FCUT_ATOMIC(T) T
 #else
 #define FCUT_ATOMIC(T) _Atomic T
+#endif*/
+
+#if defined(_MSC_VER) || defined (__GNUG__) // no easy atomic integration
+#define FCUT_ATOMIC(T) T
+#else
+#define FCUT_ATOMIC(T) _Atomic(T)
 #endif
 
 struct fcut_TestAndSuiteData
@@ -168,10 +176,11 @@ enum fcut_BooleanOperator
 struct fcut_ExpectationData
 {
 	const double a, b;
-	const char *str_a, *str_b, *str_operator, *func, *file, *additionalFailMessage;
+	const char *str_a, *str_b, *str_operator, *additionalFailMessage;
 	const enum fcut_BooleanOperator operation;
-	const int line;
 	const bool isAssertion;
+	const int line;
+	const char *func, *file;
 };
 
 // Boolean operations as a function
@@ -196,18 +205,18 @@ extern struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite;
 
 extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
-#define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__,
+#define FCUT_COMMON_DATA .line = __LINE__, .func = __func__, .file = __FILE__
 
 #define FCUT_EXPECT(EXP, ADDITIONAL_MSG, IS_ASS)			\
 	fcut_assert												\
 	(														\
 		(struct fcut_ExpectationData)						\
 		{													\
-			.a 			 	= EXP,							\
+			.a 			 	= (double)EXP,					\
 			.str_a		 	= #EXP,							\
+			.additionalFailMessage = ADDITIONAL_MSG,		\
 			.operation	 	= FCUT_NO_OP,					\
 			.isAssertion 	= IS_ASS,						\
-			.additionalFailMessage = ADDITIONAL_MSG,		\
 			FCUT_COMMON_DATA								\
 		},													\
 		fcut_currentTestOrSuite								\
@@ -218,14 +227,14 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	(														\
 	 	(struct fcut_ExpectationData)						\
 		{													\
-			.a 	   		  	= A,							\
-			.b 			  	= B,							\
+			.a 	   		  	= (double)A,					\
+			.b 			  	= (double)B,					\
 			.str_a 		  	= #A,							\
 			.str_b 		  	= #B,							\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],		\
+			.additionalFailMessage = ADDITIONAL_MSG,		\
 			.operation	  	= OP,							\
 			.isAssertion  	= IS_ASS,						\
-			.additionalFailMessage = ADDITIONAL_MSG,		\
 			FCUT_COMMON_DATA								\
 		},													\
 		fcut_currentTestOrSuite								\
@@ -345,7 +354,7 @@ const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3] = {
 #undef X
 };
 
-bool fcut_compare(double a, int operation, double b)
+bool fcut_compare(double a, enum fcut_BooleanOperator operation, double b)
 {
 	switch(operation)
 	{
@@ -368,8 +377,8 @@ bool fcut_compare(double a, int operation, double b)
 			return a != b;
 		// etc...
 	*/
+		case FCUT_OPS_LENGTH: {} // Suppress -Wswitch
 	}
-
 	return 0&&(a+b); // Gets rid of pointless compiler warnings
 }
 
