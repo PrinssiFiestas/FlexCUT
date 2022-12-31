@@ -126,7 +126,7 @@ int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 
 struct fcut_TestAndSuiteData
 {
-	const char *testName, *suiteName;
+	const char* name;
 	FCUT_ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
 	FCUT_ATOMIC(int) testCount, suiteCount, expectationCount;
 	const union {bool isTest;  bool testDefined;};
@@ -204,7 +204,10 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 		(struct fcut_ExpectationData)						\
 		{													\
 			.a 			 	= (double)EXP,					\
+			.b				= (double)0,					\
 			.str_a		 	= #EXP,							\
+			.str_b			= NULL,							\
+			.str_operator	= NULL,							\
 			.additionalFailMessage = ADDITIONAL_MSG,		\
 			.operation	 	= FCUT_NO_OP,					\
 			.isAssertion 	= IS_ASS,						\
@@ -256,15 +259,13 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 						FCUT_EXPECT_WITH_MSG,		\
 						FCUT_EXPECT_WOUT_MSG,)	(__VA_ARGS__,FCUT_IS_ASS)
 
-#define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)											\
-	struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE##_##NAME =						\
-	{																					\
-		.TEST_OR_SUITE##Name = #NAME,													\
-		.TEST_OR_SUITE##Defined = true,													\
-		.parent = fcut_currentTestOrSuite												\
-	};																					\
-																						\
-	for(struct fcut_TestAndSuiteData* fcut_currentTestOrSuite = &fcut_##TEST_OR_SUITE##_##NAME;\
+fcut_TestAndSuiteData fcut_new_test( const char* name, fcut_TestAndSuiteData* parent);
+fcut_TestAndSuiteData fcut_new_suite(const char* name, fcut_TestAndSuiteData* parent);
+#define fcut_new(test_or_suite, name) fcut_new_##test_or_suite(name, fcut_currentTestOrSuite)
+
+#define FCUT_TEST_OR_SUITE(NAME, TEST_OR_SUITE)													\
+	struct fcut_TestAndSuiteData fcut_##TEST_OR_SUITE##_##NAME = fcut_new(TEST_OR_SUITE, #NAME);\
+	for(struct fcut_TestAndSuiteData* fcut_currentTestOrSuite = &fcut_##TEST_OR_SUITE##_##NAME;	\
 		fcut_testOrSuiteRunning(fcut_currentTestOrSuite);)
 /*	{
 		// user defined test or suite code
@@ -281,6 +282,33 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#define FCUT_IS_TEST true
+
+fcut_TestAndSuiteData fcut_newTestOrSuite(const char* name, fcut_TestAndSuiteData* parent,
+										  bool isTest)
+{
+	return
+	{
+		.name				= name,
+		.testFails			= 0,		.suiteFails =	0,	.expectationFails =	0,
+		.testCount			= 0,		.suiteCount =	0,	.expectationCount =	0,
+		.testDefined		= isTest,
+		.suiteDefined		= ! isTest,
+		.testOrSuiteRunning	= false,
+		.parent				= parent
+	};
+}
+
+fcut_TestAndSuiteData fcut_new_test(const char* name, fcut_TestAndSuiteData* parent)
+{
+	return fcut_newTestOrSuite(name, parent, FCUT_IS_TEST);
+}
+
+fcut_TestAndSuiteData fcut_new_suite(const char* name, fcut_TestAndSuiteData* parent)
+{
+	return fcut_newTestOrSuite(name, parent, ! FCUT_IS_TEST);
+}
 
 struct fcut_TestAndSuiteData fcut_globalData = {};
 struct fcut_TestAndSuiteData *const fcut_currentTestOrSuite = &fcut_globalData;
@@ -390,9 +418,11 @@ struct fcut_TestAndSuiteData* findSuite(struct fcut_TestAndSuiteData* data)
 void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 								 struct fcut_TestAndSuiteData* data)
 {
-	const char* finalTestName = data->isTest  ? data->testName  :
+	/*const char* finalTestName = data->isTest  ? data->testName  :
 								data->isSuite ? data->suiteName :
-								expectation->func;
+								expectation->func;*/
+
+	const char* finalTestName = data->isTest || data->isSuite ? data->name : expectation->func;
 
 	if (expectation->isAssertion)
 		fprintf(stderr, "\nAssertion ");
@@ -493,16 +523,15 @@ void fcut_addTestOrSuiteFailToParentAndGlobalIfFailed(struct fcut_TestAndSuiteDa
 void fcut_printTestOrSuiteResult(struct fcut_TestAndSuiteData* data)
 {
 	const char* testOrSuite = data->isTest ? "Test" : "Suite";
-	const char* testOrSuiteName = data->isTest ? data->testName : data->suiteName;
 
 	if ( ! data->expectationFails && ! data->testFails && ! data->suiteFails)
 	{
-		printf("\n%s \"%s\" " FCUT_GREEN("[PASSED]") " \n", testOrSuite, testOrSuiteName);
+		printf("\n%s \"%s\" " FCUT_GREEN("[PASSED]") " \n", testOrSuite, data->name);
 	}
 	else
 	{
 		fprintf(stderr, "\n%s \"%s\" " FCUT_RED("[FAILED]") " \n",
-				testOrSuite, testOrSuiteName);
+				testOrSuite, data->name);
 	}
 }
 
