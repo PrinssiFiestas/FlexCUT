@@ -118,15 +118,6 @@ int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 //
 //*************************************************************************************
 
-/*#if defined(_MSC_VER)
-#define FCUT_ATOMIC(T) T // MSVC does not support atomics at the time of writing
-#elif defined(__cplusplus)
-#define FCUT_ATOMIC(T) std::atomic<T>
-//#define FCUT_ATOMIC(T) T
-#else
-#define FCUT_ATOMIC(T) _Atomic T
-#endif*/
-
 #if defined(_MSC_VER) || defined (__GNUG__) // no easy atomic integration
 #define FCUT_ATOMIC(T) T
 #else
