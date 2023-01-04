@@ -166,7 +166,7 @@ enum fcut_BooleanOperator
 
 struct fcut_ExpectationData
 {
-	const double a, b;
+	const long double a, b;
 	const char *str_a, *str_b, *str_operator, *additionalFailMessage;
 	const enum fcut_BooleanOperator operation;
 	const bool isAssertion;
@@ -203,8 +203,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	(														\
 		(struct fcut_ExpectationData)						\
 		{													\
-			.a 			 	= (double)EXP,					\
-			.b				= (double)0,					\
+			.a 			 	= (long double)EXP,				\
+			.b				= (long double)0,				\
 			.str_a		 	= #EXP,							\
 			.str_b			= NULL,							\
 			.str_operator	= NULL,							\
@@ -221,8 +221,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	(														\
 	 	(struct fcut_ExpectationData)						\
 		{													\
-			.a 	   		  	= (double)A,					\
-			.b 			  	= (double)B,					\
+			.a 	   		  	= (long double)A,				\
+			.b 			  	= (long double)B,				\
 			.str_a 		  	= #A,							\
 			.str_b 		  	= #B,							\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],		\
@@ -432,9 +432,9 @@ void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 	fprintf(stderr, FCUT_MAGENTA("%s"), expectation->str_a);
 	if (expectation->operation != FCUT_NO_OP)
 		fprintf(stderr, FCUT_MAGENTA(" %s %s"), expectation->str_operator, expectation->str_b);
-	fprintf(stderr, " evaluated to " FCUT_RED("%g"), expectation->a);
+	fprintf(stderr, " evaluated to " FCUT_RED("%Lg"), expectation->a);
 	if (expectation->operation != FCUT_NO_OP)
-		fprintf(stderr, FCUT_RED(" %s %g"), expectation->str_operator, expectation->b);
+		fprintf(stderr, FCUT_RED(" %s %Lg"), expectation->str_operator, expectation->b);
 	fprintf(stderr, ".\n");
 
 	if (expectation->additionalFailMessage != NULL)
