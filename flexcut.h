@@ -418,10 +418,6 @@ struct fcut_TestAndSuiteData* findSuite(struct fcut_TestAndSuiteData* data)
 void fcut_printExpectationFail(struct fcut_ExpectationData* expectation,
 								 struct fcut_TestAndSuiteData* data)
 {
-	/*const char* finalTestName = data->isTest  ? data->testName  :
-								data->isSuite ? data->suiteName :
-								expectation->func;*/
-
 	const char* finalTestName = data->isTest || data->isSuite ? data->name : expectation->func;
 
 	if (expectation->isAssertion)
