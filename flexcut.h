@@ -124,7 +124,7 @@ int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 #define FCUT_ATOMIC(T) _Atomic(T)
 #endif
 
-struct fcut_TestAndSuiteData
+typedef struct fcut_TestAndSuiteData
 {
 	const char* name;
 	FCUT_ATOMIC(int) testFails, suiteFails, expectationFails/*includes assertion fails*/;
@@ -133,8 +133,8 @@ struct fcut_TestAndSuiteData
 	const union {bool isSuite; bool suiteDefined;};
 	bool testOrSuiteRunning;
 	struct fcut_TestAndSuiteData* parent;
-};
-extern struct fcut_TestAndSuiteData fcut_globalData;
+} fcut_TestAndSuiteData;
+extern fcut_TestAndSuiteData fcut_globalData;
 
 #define OP_TABLE	\
 	X(_EQ, ==)		\
@@ -288,7 +288,7 @@ fcut_TestAndSuiteData fcut_new_suite(const char* name, fcut_TestAndSuiteData* pa
 fcut_TestAndSuiteData fcut_newTestOrSuite(const char* name, fcut_TestAndSuiteData* parent,
 										  bool isTest)
 {
-	return
+	fcut_TestAndSuiteData D =
 	{
 		.name				= name,
 		.testFails			= 0,		.suiteFails =	0,	.expectationFails =	0,
@@ -298,6 +298,7 @@ fcut_TestAndSuiteData fcut_newTestOrSuite(const char* name, fcut_TestAndSuiteDat
 		.testOrSuiteRunning	= false,
 		.parent				= parent
 	};
+	return D;
 }
 
 fcut_TestAndSuiteData fcut_new_test(const char* name, fcut_TestAndSuiteData* parent)
