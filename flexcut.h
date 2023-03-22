@@ -87,7 +87,12 @@ int main() // function scope required!
 }
 */
 
+// Return value of test program on failures
+// Many build systems abort build when test program return value is not zero. Set this flag
+// to 0 in implementation file if that is not desired. 
+#ifndef FCUT_FAILURE
 #define FCUT_FAILURE 1
+#endif
 
 // Does nothing when expression is true.
 // Exits program and prints failure message when expression is false.
@@ -471,7 +476,7 @@ int fcut_assert(struct fcut_ExpectationData expectation,
 		fcut_addExpectationFail(data);
 		fcut_printExpectationFail(&expectation, data);
 		if(expectation.isAssertion)
-			exit(EXIT_FAILURE);
+			exit(FCUT_FAILURE);
 		else 
 			return FCUT_FAILURE;
 	}
