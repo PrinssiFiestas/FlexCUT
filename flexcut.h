@@ -90,8 +90,8 @@ int main() // function scope required!
 // Return value of test program on failures
 // Many build systems abort build when test program return value is not zero. Set this flag
 // to 0 in implementation file if that is not desired. 
-#ifndef FCUT_FAILURE
-#define FCUT_FAILURE 1
+#ifndef FLEXCUT_FAILURE
+#define FLEXCUT_FAILURE 1
 #endif
 
 // Does nothing when expression is true.
@@ -101,7 +101,7 @@ int main() // function scope required!
 void ASSERT(bool expression, const char* additionalFailMessage/* = NULL*/);
 
 // Returns 0 when expression is true.
-// Prints failure message and returns FCUT_FAILURE when expression is false.
+// Prints failure message and returns FLEXCUT_FAILURE when expression is false.
 // Really a macro.
 int EXPECT(bool expression, const char* additionalFailMessage/* = NULL*/);
 
@@ -356,7 +356,7 @@ void fcut_printExitMessageAndAddExitStatus()
 	PRINT_DATA(suite);
 
 	if (fcut_anyFails(&fcut_globalData))
-		exit(FCUT_FAILURE);
+		exit(FLEXCUT_FAILURE);
 }
 
 #undef PRINT_DATA
@@ -476,9 +476,9 @@ int fcut_assert(struct fcut_ExpectationData expectation,
 		fcut_addExpectationFail(data);
 		fcut_printExpectationFail(&expectation, data);
 		if(expectation.isAssertion)
-			exit(FCUT_FAILURE);
+			exit(FLEXCUT_FAILURE);
 		else 
-			return FCUT_FAILURE;
+			return FLEXCUT_FAILURE;
 	}
 	return 0;
 }
