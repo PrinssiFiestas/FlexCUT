@@ -283,6 +283,9 @@ fcut_TestAndSuiteData fcut_new_suite(const char* name, fcut_TestAndSuiteData* pa
 //
 //*************************************************************************************
 
+// TODO
+// Add pointer comparasion
+
 #ifdef FLEXCUT_IMPLEMENTATION
 
 #include <stdio.h>
