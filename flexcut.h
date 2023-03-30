@@ -208,7 +208,7 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	(														\
 		(struct fcut_ExpectationData)						\
 		{													\
-			.a 			 	= (long double)EXP,				\
+			.a 			 	= (long double)(EXP),			\
 			.b				= (long double)0,				\
 			.str_a		 	= #EXP,							\
 			.str_b			= NULL,							\
@@ -226,8 +226,8 @@ extern const char FCUT_STR_OPERATORS[FCUT_OPS_LENGTH][3];
 	(														\
 	 	(struct fcut_ExpectationData)						\
 		{													\
-			.a 	   		  	= (long double)A,				\
-			.b 			  	= (long double)B,				\
+			.a 	   		  	= (long double)(A),				\
+			.b 			  	= (long double)(B),				\
 			.str_a 		  	= #A,							\
 			.str_b 		  	= #B,							\
 			.str_operator 	= FCUT_STR_OPERATORS[OP],		\
